@@ -14,7 +14,7 @@ El objetivo de este repositorio es permitir hacer fácilmente cambios en la conf
 # En /var/www/html:
 
 # clonar el repositorio
-git clone <este-repositorio> .
+git clone https://github.com/Cenzontle-AC/wiiki.git .
 
 
 # instalar mediawiki
