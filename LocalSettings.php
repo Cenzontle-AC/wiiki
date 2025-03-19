@@ -39,9 +39,10 @@ $wgDBserver = getenv('wgDBserver');
 $wgDBname = getenv('wgDBname');
 $wgDBuser = getenv('wgDBuser');
 $wgDBpassword = getenv('wgDBpassword');
+$privateNamespaceName = getenv('privateNamespaceName');
 
 ### show error if required env vars ar missing
-if(!($wgServer && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword)) {
+if(!($wgServer && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword && $privateNamespaceName)) {
     throw new Exception("Missing env var");
     exit;
 }
@@ -170,6 +171,31 @@ wfLoadExtension( 'Poem' );
 wfLoadExtension( 'VisualEditor' );
 wfLoadExtension( 'WikiEditor' );
 
+# Additional extensions
+
+# Privado
+# Lockdown - Make private namespaces
+wfLoadExtension( 'Lockdown' );
+// define custom namespaces
+// define constants for your custom namespaces, for a more readable configuration
+define('NS_PRIVATE', 100);
+define('NS_PRIVATE_TALK', 101);
+
+$wgExtraNamespaces[NS_PRIVATE] = $privateNamespaceName; 
+$wgExtraNamespaces[NS_PRIVATE_TALK] = $privateNamespaceName . '_discusión';
+
+// restrict "read" permission to logged in users
+$wgNamespacePermissionLockdown[NS_PRIVATE]['read'] = [ 'user' ];
+$wgNamespacePermissionLockdown[NS_PRIVATE_TALK]['read'] = [ 'user' ];
+
+// prevent inclusion of pages from that namespace
+$wgNonincludableNamespaces[] = NS_PRIVATE;
+$wgNonincludableNamespaces[] = NS_PRIVATE_TALK;
+
+$wgNamespacesToBeSearchedDefault[NS_PRIVATE] = true; // Make Privado searchable by default (works if user is logged in)
+
+
+# Debugging
 $wgShowExceptionDetails = getenv('wgShowExceptionDetails') === 'true';
 $wgDebugToolbar = getenv('wgDebugToolbar') === 'true';
 $wgShowDebug = getenv('wgShowDebug') === 'true';
