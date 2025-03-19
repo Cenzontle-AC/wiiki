@@ -18,7 +18,9 @@ git clone https://github.com/Cenzontle-AC/wiiki.git .
 
 
 # instalar mediawiki
-curl -L https://releases.wikimedia.org/mediawiki/1.41/mediawiki-1.41.1.tar.gz | tar -xz --strip-components=1
+wget https://releases.wikimedia.org/mediawiki/1.43/mediawiki-1.43.0.tar.gz
+tar -xzvf mediawiki-*.tar.gz --strip-components=1
+rm mediawiki-*.tar.gz
 
 # crear archivo .env
 cp .env.example .env
