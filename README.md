@@ -52,6 +52,10 @@ xz -d wiiki_mediawiki.sql.xz
 mariadb --user root --password < wiiki_mediawiki.sql
 ```
 
+### Subir las imagenes
+
+Si existe un backup del directorio de imagenes. Es necesario subir via SFTP el directorio a `/var/www/html/images/`.
+
 #### Crear el usuario de la base de datos
 
 Abrir el REPL de `mariadb`:
