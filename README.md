@@ -68,6 +68,15 @@ GRANT ALL PRIVILEGES ON wiiki_mediawiki.* TO  'miusuario'@'localhost' ;
 
 **Importante**: Asegurarse que los datos de usuario (e.g. `miusuario`, `mipassword`) así como el nombre de la base de datos (e.g. `wiiki_mediawiki`) se correspondan con los usados en el archivo `.env`.
 
+## Administración
+
+### Crear manualmente un backup de la base de datos
+
+```sh
+# en el directorio donde se desea crear el backup
+mysqldump -u <usuario-de-la-base-de-datos> -p --databases <la-base-de-datos> | xz > <la-base-de-datos>_$(date +"%Y-%m-%d_%H-%M-%S").sql.xz
+```
+
 ## Abrir la página
 
 ### En producción
