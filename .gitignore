@@ -3,7 +3,6 @@
 !/.gitignore
 !/LocalSettings.php
 !/extensions/
-!/images/
 !/skins/
 !/.env.example
 !/README.md 
