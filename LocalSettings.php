@@ -33,16 +33,29 @@ foreach (explode("\n", file_get_contents(__DIR__ . "/.env")) as $line) {
 ## The protocol and server name to use in fully-qualified URLs
 $wgServer = getenv('wgServer'); // e.g "https://mywiki.com"
 
-## Database settings
+## Env settings
+### Database
 $wgDBtype = getenv('wgDBtype');
 $wgDBserver = getenv('wgDBserver');
 $wgDBname = getenv('wgDBname');
 $wgDBuser = getenv('wgDBuser');
 $wgDBpassword = getenv('wgDBpassword');
+### Privacy
 $privateNamespaceName = getenv('privateNamespaceName');
+### SMPT
+$smptHost = getenv('smptHost');
+$smptIDHost = getenv('smptIDHost');
+$smptPort = getenv('smptPort');
+$smptShouldAuth = getenv('smptShouldAuth') === true;
+$smptUsername = getenv('smptUsername');
+$smptPassword = getenv('smptPassword');
+### Emails
+$emergencyContactEmail = getenv('emergencyContactEmail');
+$passwordSenderEmail = getenv('passwordSenderEmail');
 
 ### show error if required env vars ar missing
-if(!($wgServer && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword && $privateNamespaceName)) {
+if(!($wgServer && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword && $privateNamespaceName
+     && $smptHost && $smptIDHost && $smptPort && $smptShouldAuth && $smptUsername && $smptPassword)) {
     throw new Exception("Missing env var");
     exit;
 }
@@ -70,17 +83,28 @@ $wgLogos = [
     'icon' => "$wgResourceBasePath/images/wiiki-logo-v0.jpg",
 ];
 
+#Emailing
 ## UPO means: this is also a user preference option
 
 $wgEnableEmail = true;
 $wgEnableUserEmail = true; # UPO
 
-$wgEmergencyContact = "";
-$wgPasswordSender = "";
-
 $wgEnotifUserTalk = true; # UPO
 $wgEnotifWatchlist = true; # UPO
 $wgEmailAuthentication = true;
+
+$wgSMTP = [
+    'host'	=> $smptHost, 
+    'IDHost'    => $smptIDHost,      
+    'localhost' => $smptIDHost,      
+    'port'	=> $smptPort,                
+    'auth'	=> $smptShouldAuth,               
+    'username'  => $smptUsername,     
+    'password'  => $smptPassword       
+];
+
+$wgEmergencyContact = $emergencyContactEmail;
+$wgPasswordSender = $passwordSenderEmail;
 
 
 # MySQL specific settings
