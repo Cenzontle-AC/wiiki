@@ -2,7 +2,6 @@
 	"@metadata": {
 		"authors": [
 			"Adam-Yourist",
-			"Amire80",
 			"ElizaMag",
 			"Tusholi"
 		]
@@ -28,5 +27,6 @@
 	"mobile-frontend-redirected-from": "Хьахьожадаьд «[[$1]]» яхача оагIона тIара",
 	"mobile-frontend-user-page-contributions": "Къахьегам",
 	"mobile-frontend-user-page-talk": "Дувцар",
-	"minerva-page-actions-overflow": "Кхы а"
+	"minerva-page-actions-overflow": "Кхы а",
+	"skin-minerva-mobile-option-MinervaShowCategories": "ОагӀаташ"
 }

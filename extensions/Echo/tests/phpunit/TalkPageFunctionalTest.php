@@ -1,6 +1,9 @@
 <?php
 
+namespace MediaWiki\Extension\Notifications\Test;
+
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Tests\Api\ApiTestCase;
 
 /**
  * @group Echo
@@ -8,9 +11,6 @@ use MediaWiki\Extension\Notifications\Model\Event;
  * @group medium
  */
 class TalkPageFunctionalTest extends ApiTestCase {
-	/** @inheritDoc */
-	protected $tablesUsed = [ 'echo_event' ];
-
 	/**
 	 * Creates and updates a user talk page a few times to ensure proper events are
 	 * created.
@@ -90,9 +90,15 @@ class TalkPageFunctionalTest extends ApiTestCase {
 	 * @return \stdClass[] All talk page edit events in db sorted from oldest to newest
 	 */
 	protected function fetchAllEvents() {
-		$res = $this->db->select( 'echo_event', Event::selectFields(), [
+		$res = $this->getDb()->newSelectQueryBuilder()
+			->select( Event::selectFields() )
+			->from( 'echo_event' )
+			->where( [
 				'event_type' => 'edit-user-talk',
-			], __METHOD__, [ 'ORDER BY' => 'event_id ASC' ] );
+			] )
+			->orderBy( 'event_id' )
+			->caller( __METHOD__ )
+			->fetchResultSet();
 
 		return iterator_to_array( $res );
 	}

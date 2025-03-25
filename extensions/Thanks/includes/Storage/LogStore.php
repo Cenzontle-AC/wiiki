@@ -3,14 +3,14 @@
 namespace MediaWiki\Extension\Thanks\Storage;
 
 use DatabaseLogEntry;
-use ExtensionRegistry;
 use ManualLogEntry;
 use MediaWiki\CheckUser\Hooks;
 use MediaWiki\Config\ServiceOptions;
 use MediaWiki\Extension\Thanks\Storage\Exceptions\InvalidLogType;
 use MediaWiki\Extension\Thanks\Storage\Exceptions\LogDeleted;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\User\ActorNormalization;
-use User;
+use MediaWiki\User\User;
 use Wikimedia\Rdbms\IConnectionProvider;
 
 /**

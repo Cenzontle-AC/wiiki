@@ -1,7 +1,7 @@
 /*!
  * VisualEditor TableContextItem class.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 /**
@@ -64,7 +64,7 @@ ve.ui.TableContextItem.static.isCompatibleWith = function ( model ) {
  * Handle delete button click events.
  */
 ve.ui.TableContextItem.prototype.onDeleteButtonClick = function () {
-	var surfaceModel = this.getFragment().getSurface();
+	const surfaceModel = this.getFragment().getSurface();
 
 	surfaceModel.getLinearFragment(
 		surfaceModel.getSelectedNode().findParent( ve.dm.TableNode ).getOuterRange()

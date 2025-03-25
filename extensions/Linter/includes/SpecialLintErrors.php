@@ -20,50 +20,73 @@
 
 namespace MediaWiki\Linter;
 
-use Html;
-use HTMLForm;
-use MalformedTitleException;
-use MediaWiki\MediaWikiServices;
-use OutputPage;
-use SpecialPage;
+use MediaWiki\Cache\LinkCache;
+use MediaWiki\Html\Html;
+use MediaWiki\HTMLForm\HTMLForm;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Permissions\PermissionManager;
+use MediaWiki\Request\WebRequest;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Title\MalformedTitleException;
+use MediaWiki\Title\NamespaceInfo;
+use MediaWiki\Title\TitleParser;
 
 class SpecialLintErrors extends SpecialPage {
+
+	private NamespaceInfo $namespaceInfo;
+	private TitleParser $titleParser;
+	private LinkCache $linkCache;
+	private PermissionManager $permissionManager;
+	private CategoryManager $categoryManager;
+	private TotalsLookup $totalsLookup;
 
 	/**
 	 * @var string|null
 	 */
 	private $category;
 
-	public function __construct() {
+	/**
+	 * @param NamespaceInfo $namespaceInfo
+	 * @param TitleParser $titleParser
+	 * @param LinkCache $linkCache
+	 * @param PermissionManager $permissionManager
+	 * @param CategoryManager $categoryManager
+	 * @param TotalsLookup $totalsLookup
+	 */
+	public function __construct(
+		NamespaceInfo $namespaceInfo,
+		TitleParser $titleParser,
+		LinkCache $linkCache,
+		PermissionManager $permissionManager,
+		CategoryManager $categoryManager,
+		TotalsLookup $totalsLookup
+	) {
 		parent::__construct( 'LintErrors' );
+		$this->namespaceInfo = $namespaceInfo;
+		$this->titleParser = $titleParser;
+		$this->linkCache = $linkCache;
+		$this->permissionManager = $permissionManager;
+		$this->categoryManager = $categoryManager;
+		$this->totalsLookup = $totalsLookup;
 	}
 
 	/**
-	 * @param int|null $ns
-	 * @param bool $invert
 	 * @param string $titleLabel
 	 */
-	protected function showFilterForm( $ns, $invert, $titleLabel ) {
+	protected function showFilterForm( $titleLabel ) {
 		$selectOptions = [
 			(string)$this->msg( 'linter-form-exact-match' )->escaped() => true,
 			(string)$this->msg( 'linter-form-prefix-match' )->escaped() => false,
 		];
+		$namespaces = $this->getContext()->getRequest()->getVal( "wpNamespaceRestrictions" );
 		$fields = [
-			'namespace' => [
-				'type' => 'namespaceselect',
-				'name' => 'namespace',
-				'label-message' => 'linter-form-namespace',
-				'default' => $ns,
-				'id' => 'namespace',
-				'all' => '',
-				'cssclass' => 'namespaceselector'
-			],
-			'invertnamespace' => [
-				'type' => 'check',
-				'name' => 'invert',
-				'label-message' => 'invert',
-				'default' => $invert,
-				'tooltip' => 'invert'
+			'NamespaceRestrictions' => [
+				'type' => 'namespacesmultiselect',
+				'label' => $this->msg( 'linter-form-namespace' )->text(),
+				'exists' => true,
+				'cssclass' => 'mw-block-partial-restriction',
+				'default' => $namespaces,
+				'input' => [ 'autocomplete' => false ]
 			],
 			'titlefield' => [
 				'type' => 'title',
@@ -81,32 +104,27 @@ class SpecialLintErrors extends SpecialPage {
 			]
 		];
 
-		$mwServices = MediaWikiServices::getInstance();
-		$config = $mwServices->getMainConfig();
-		$enableUserInterfaceTagAndTemplateStage = $config->get( 'LinterUserInterfaceTagAndTemplateStage' );
-		if ( $enableUserInterfaceTagAndTemplateStage ) {
-			$selectTemplateOptions = [
-				(string)$this->msg( 'linter-form-template-option-all' )->escaped() => 'all',
-				(string)$this->msg( 'linter-form-template-option-with' )->escaped() => 'with',
-				(string)$this->msg( 'linter-form-template-option-without' )->escaped() => 'without',
-			];
-			$htmlTags = new HtmlTags( $this );
-			$tagAndTemplateFields = [
-				'tag' => [
-					'type' => 'select',
-					'name' => 'tag',
-					'label-message' => 'linter-form-tag',
-					'options' => $htmlTags->getAllowedHTMLTags()
-				],
-				'template' => [
-					'type' => 'select',
-					'name' => 'template',
-					'label-message' => 'linter-form-template',
-					'options' => $selectTemplateOptions
-				]
-			];
-			$fields = array_merge( $fields, $tagAndTemplateFields );
-		}
+		$selectTemplateOptions = [
+			(string)$this->msg( 'linter-form-template-option-all' )->escaped() => 'all',
+			(string)$this->msg( 'linter-form-template-option-with' )->escaped() => 'with',
+			(string)$this->msg( 'linter-form-template-option-without' )->escaped() => 'without',
+		];
+		$htmlTags = new HtmlTags( $this );
+		$tagAndTemplateFields = [
+			'tag' => [
+				'type' => 'select',
+				'name' => 'tag',
+				'label-message' => 'linter-form-tag',
+				'options' => $htmlTags->getAllowedHTMLTags()
+			],
+			'template' => [
+				'type' => 'select',
+				'name' => 'template',
+				'label-message' => 'linter-form-template',
+				'options' => $selectTemplateOptions
+			]
+		];
+		$fields = array_merge( $fields, $tagAndTemplateFields );
 
 		$form = HTMLForm::factory( 'ooui', $fields, $this->getContext() );
 		$form->setWrapperLegend( true );
@@ -122,14 +140,13 @@ class SpecialLintErrors extends SpecialPage {
 	 * and exact title searches that find no matching records, and produce appropriate error messages
 	 *
 	 * @param string $title
-	 * @param int|null $namespace
-	 * @param bool $invert
+	 * @param array $namespaces
 	 * @return array
 	 */
-	public function cleanTitle( $title, $namespace, $invert ) {
+	public function cleanTitle( string $title, $namespaces ): array {
 		// Check all titles for malformation regardless of exact match or prefix match
 		try {
-			$titleElements = MediaWikiServices::getInstance()->getTitleParser()->parseTitle( $title );
+			$titleElements = $this->titleParser->parseTitle( $title );
 		} catch ( MalformedTitleException  $e ) {
 			return [ 'titlefield' => null, 'error' => 'linter-invalid-title' ];
 		}
@@ -151,25 +168,15 @@ class SpecialLintErrors extends SpecialPage {
 			$titleNamespace = null;
 		}
 
-		if ( $namespace === null && $titleNamespace === null ) {
-			// if invert checkbox is set while the namespace drop-down is set to 'all' and no namespace was set in the
-			// title text box, then the invert check box being set is invalid as it would exclude all namespaces.
-			if ( $invert ) {
-				return [ 'titlefield' => null, 'error' => 'linter-namespace-invert-error' ];
-			}
-		}
-
-		if ( $namespace !== null && $titleNamespace !== null ) {
+		if ( $namespaces && $titleNamespace !== null && !in_array( $titleNamespace, $namespaces ) ) {
 			// Show the namespace mismatch error if the namespaces specified in drop-down and title text do not match.
-			if ( $namespace !== $titleNamespace ) {
-				return [ 'titlefield' => null, 'error' => 'linter-namespace-mismatch' ];
-			}
+			return [ 'titlefield' => null, 'error' => 'linter-namespace-mismatch' ];
 		}
 
-		// If the namespace drop-down selection is 'all' (null), return the namespace from the title text
-		$ns = ( $namespace === null ) ? $titleNamespace : $namespace;
+		// If no namespaces are selected (null), return the namespace from the title text
+		$namespaces = $namespaces ?: [ $titleNamespace ];
 
-		return [ 'titlefield' => $titleElements->getDBkey(), 'namespace' => $ns ];
+		return [ 'titlefield' => $titleElements->getDBkey(), 'namespace' => $namespaces ];
 	}
 
 	/**
@@ -184,22 +191,52 @@ class SpecialLintErrors extends SpecialPage {
 	}
 
 	/**
-	 * @param string|null $par
+	 * Extract namespace settings from the request object,
+	 * returning an array of namespace id numbers
+	 *
+	 * @param WebRequest $request
+	 * @return array
 	 */
-	public function execute( $par ) {
+	protected function findNamespaces( $request ) {
+		$namespaceRequestValues = $request->getRawVal( 'wpNamespaceRestrictions' ) ?? '';
+		if ( $namespaceRequestValues === '' ) {
+			return [];
+		}
+
+		// Security measure: only allow active namespace IDs to reach the query
+		return array_values(
+			array_intersect(
+				// Remove -2 = "media" and -1 = "Special" namespace elements
+				array_filter(
+					array_keys(
+						$this->namespaceInfo->getCanonicalNamespaces()
+					),
+					static function ( $x ) {
+						return $x >= 0;
+					}
+				),
+				array_map( 'intval', explode( "\n", $namespaceRequestValues ) )
+			)
+		);
+	}
+
+	/**
+	 * @param string|null $subPage
+	 */
+	public function execute( $subPage ) {
 		$request = $this->getRequest();
 		$out = $this->getOutput();
 
 		$params = $request->getQueryValues();
 
 		$this->setHeaders();
-		$this->outputHeader( $par || isset( $params[ 'titlesearch' ] ) ? 'disable-summary' : '' );
+		$this->outputHeader( $subPage || isset( $params[ 'titlesearch' ] ) ? 'disable-summary' : '' );
 
-		$ns = $request->getIntOrNull( 'namespace' );
-		$invert = $request->getBool( 'invert' );
+		$namespaces = $this->findNamespaces( $request );
+
 		$exactMatch = $request->getBool( 'exactmatch', true );
 		$tagName = $this->getRequest()->getText( 'tag' );
-		// map command line tag name through associative array to protect request from a SQL injection security risk
+		// map command line tag name through an associative array to protect request from an SQL injection security risk
 		$htmlTags = new HtmlTags( $this );
 		$allowedHtmlTags = $htmlTags->getAllowedHTMLTags();
 		$tag = $allowedHtmlTags[ $tagName ] ?? 'all';
@@ -207,25 +244,29 @@ class SpecialLintErrors extends SpecialPage {
 
 		// If the request contains a 'titlesearch' parameter, then the user entered a page title
 		// or just the first few characters of the title. They also may have entered the first few characters
-		// of a custom namespace (just text before a :) to search for and pressed the associated Submit button.
-		// Added the pageback parameter to inform the code that the '<- Special:LintErrors' link had be used to allow
+		// of a custom namespace (just the text before a ':') to search for and pressed the associated Submit button.
+		// Added the pageback parameter to inform the code that the '<- Special:LintErrors' link had been used to allow
 		// the UI to redisplay with previous form values, instead of just resubmitting the query.
-		if ( $par === null && isset( $params[ 'titlesearch' ] ) && !isset( $params[ 'pageback'] ) ) {
-			array_shift( $params );
+		if ( $subPage === null && isset( $params[ 'titlesearch' ] ) && !isset( $params[ 'pageback'] ) ) {
+			unset( $params[ 'title' ] );
 			$params = array_merge( [ 'pageback' => true ], $params );
 			$out->addBacklinkSubtitle( $this->getPageTitle(), $params );
 
 			$title = $request->getText( 'titlesearch' );
-			$titleSearch = $this->cleanTitle( $title, $ns, $invert );
+			$titleSearch = $this->cleanTitle( $title, $namespaces );
 
 			if ( $titleSearch[ 'titlefield' ] !== null ) {
-				$out->setPageTitle( $this->msg( 'linter-prefix-search-subpage', $titleSearch[ 'titlefield' ] ) );
+				$out->setPageTitleMsg( $this->msg( 'linter-prefix-search-subpage', $titleSearch[ 'titlefield' ] ) );
 
-				$catManager = new CategoryManager();
 				$pager = new LintErrorsPager(
-					$this->getContext(), null, $this->getLinkRenderer(),
-					$catManager, $titleSearch[ 'namespace' ], $invert, $exactMatch,
-					$titleSearch[ 'titlefield' ], $template, $tag
+					$this->getContext(),
+					$this->categoryManager,
+					$this->linkCache,
+					$this->getLinkRenderer(),
+					$this->permissionManager,
+					null,
+					$namespaces,
+					$exactMatch, $titleSearch[ 'titlefield' ], $template, $tag
 				);
 				$out->addParserOutput( $pager->getFullOutput() );
 			} else {
@@ -234,17 +275,19 @@ class SpecialLintErrors extends SpecialPage {
 			return;
 		}
 
-		$catManager = new CategoryManager();
-		if ( in_array( $par, $this->getSubpagesForPrefixSearch() ) ) {
-			$this->category = $par;
+		if ( in_array( $subPage, array_merge(
+			$this->categoryManager->getVisibleCategories(),
+			$this->categoryManager->getInvisibleCategories()
+		) ) ) {
+			$this->category = $subPage;
 		}
 
 		if ( !$this->category ) {
 			$this->addHelpLink( 'Help:Extension:Linter' );
-			$this->showCategoryListings( $catManager );
+			$this->showCategoryListings();
 		} else {
-			$this->addHelpLink( "Help:Extension:Linter/{$this->category}" );
-			$out->setPageTitle(
+			$this->addHelpLink( "Help:Lint_errors/{$this->category}" );
+			$out->setPageTitleMsg(
 				$this->msg( 'linterrors-subpage',
 					$this->msg( "linter-category-{$this->category}" )->text()
 				)
@@ -252,19 +295,24 @@ class SpecialLintErrors extends SpecialPage {
 			$out->addBacklinkSubtitle( $this->getPageTitle() );
 
 			$title = $request->getText( 'titlecategorysearch' );
-			// For category based searches, allow an undefined title to display all records
+			// For category-based searches, allow an undefined title to display all records
 			if ( $title === '' ) {
-				$titleCategorySearch = [ 'titlefield' => '', 'namespace' => $ns, 'pageid' => null ];
+				$titleCategorySearch = [ 'titlefield' => '', 'namespace' => $namespaces, 'pageid' => null ];
 			} else {
-				$titleCategorySearch = $this->cleanTitle( $title, $ns, $invert );
+				$titleCategorySearch = $this->cleanTitle( $title, $namespaces );
 			}
 
 			if ( $titleCategorySearch[ 'titlefield' ] !== null ) {
-				$this->showFilterForm( null, $invert, 'titlecategorysearch' );
+				$this->showFilterForm( 'titlecategorysearch' );
 				$pager = new LintErrorsPager(
-					$this->getContext(), $this->category, $this->getLinkRenderer(),
-					$catManager, $titleCategorySearch[ 'namespace' ], $invert, $exactMatch,
-					$titleCategorySearch[ 'titlefield' ], $template, $tag
+					$this->getContext(),
+					$this->categoryManager,
+					$this->linkCache,
+					$this->getLinkRenderer(),
+					$this->permissionManager,
+					$this->category,
+					$namespaces,
+					$exactMatch, $titleCategorySearch[ 'titlefield' ], $template, $tag
 				);
 				$out->addParserOutput( $pager->getFullOutput() );
 			} else {
@@ -291,23 +339,16 @@ class SpecialLintErrors extends SpecialPage {
 		$out = $this->getOutput();
 		$out->addHTML( Html::element( 'h2', [],
 			$this->msg( "linter-lints-prefix-search-page-desc" )->text() ) );
-		$this->showFilterForm( null, false, 'titlesearch' );
+		$this->showFilterForm( 'titlesearch' );
 	}
 
-	/**
-	 * @param CategoryManager $catManager
-	 */
-	private function showCategoryListings( CategoryManager $catManager ) {
-		$lookup = new TotalsLookup(
-			$catManager,
-			MediaWikiServices::getInstance()->getMainWANObjectCache()
-		);
-		$totals = $lookup->getTotals();
+	private function showCategoryListings() {
+		$totals = $this->totalsLookup->getTotals();
 
 		// Display lint issues by priority
-		$this->displayList( 'high', $totals, $catManager->getHighPriority() );
-		$this->displayList( 'medium', $totals, $catManager->getMediumPriority() );
-		$this->displayList( 'low', $totals, $catManager->getLowPriority() );
+		$this->displayList( 'high', $totals, $this->categoryManager->getHighPriority() );
+		$this->displayList( 'medium', $totals, $this->categoryManager->getMediumPriority() );
+		$this->displayList( 'low', $totals, $this->categoryManager->getLowPriority() );
 
 		$this->displaySearchPage();
 	}
@@ -342,8 +383,7 @@ class SpecialLintErrors extends SpecialPage {
 	 * @return string[]
 	 */
 	protected function getSubpagesForPrefixSearch() {
-		$categoryManager = new CategoryManager();
-		return array_merge( $categoryManager->getVisibleCategories(), $categoryManager->getInvisibleCategories() );
+		return $this->categoryManager->getVisibleCategories();
 	}
 
 }

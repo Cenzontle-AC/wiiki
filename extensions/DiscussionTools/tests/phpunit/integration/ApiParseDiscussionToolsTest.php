@@ -2,7 +2,8 @@
 
 namespace MediaWiki\Extension\DiscussionTools\Tests;
 
-use ApiTestCase;
+use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\Tests\Api\ApiTestCase;
 
 /**
  * @group medium
@@ -14,6 +15,10 @@ class ApiParseDiscussionToolsTest extends ApiTestCase {
 	 * @covers \MediaWiki\Extension\DiscussionTools\CommentFormatter::addDiscussionTools
 	 */
 	public function testApiParseSections() {
+		if ( ExtensionRegistry::getInstance()->isLoaded( 'Liquid Threads' ) ) {
+			$this->overrideConfigValue( 'LqtTalkPages', false );
+		}
+
 		$params = [
 			'action' => 'parse',
 			'title' => 'Talk:Test',

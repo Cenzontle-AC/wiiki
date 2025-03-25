@@ -38,7 +38,9 @@
 			textSelectionFn,
 			hasErrorsOnSave = false,
 			selectedLine = 0,
-			returnFalse = function () { return false; },
+			returnFalse = function () {
+				return false;
+			},
 			api = new mw.Api();
 
 		// Initialize state
@@ -56,7 +58,7 @@
 		 *
 		 * This is also where we can attach some extra information to the events.
 		 */
-		context.evt = $.extend( context.evt, {
+		context.evt = Object.assign( context.evt, {
 			keydown: returnFalse,
 			change: returnFalse,
 			delayedChange: returnFalse,
@@ -97,7 +99,7 @@
 		/**
 		 * Internally used functions
 		 */
-		context.fn = $.extend( context.fn, {
+		context.fn = Object.assign( context.fn, {
 			isCodeEditorActive: function () {
 				return context.codeEditorActive;
 			},
@@ -333,7 +335,7 @@
 					// Protocol relative
 					basePath = window.location.protocol + basePath;
 				}
-				ace.config.set( 'basePath', basePath + '/CodeEditor/modules/ace' );
+				ace.config.set( 'basePath', basePath + '/CodeEditor/modules/lib/ace' );
 
 				if ( lang ) {
 					// Ace doesn't like replacing a textarea directly.
@@ -364,10 +366,17 @@
 					context.codeEditor.setReadOnly( $box.prop( 'readonly' ) );
 					context.codeEditor.setShowInvisibles( context.showInvisibleChars );
 
+					var htmlClasses = document.documentElement.classList;
+					var inDarkMode = htmlClasses.contains( 'skin-theme-clientpref-night' ) || (
+						htmlClasses.contains( 'skin-theme-clientpref-os' ) &&
+						window.matchMedia && window.matchMedia( '(prefers-color-scheme: dark)' ).matches
+					);
+
 					// The options to enable
 					context.codeEditor.setOptions( {
 						enableBasicAutocompletion: true,
-						enableSnippets: true
+						enableSnippets: true,
+						theme: inDarkMode ? 'ace/theme/monokai' : 'ace/theme/textmate'
 					} );
 
 					context.codeEditor.commands.addCommand( {
@@ -393,7 +402,8 @@
 						var mode = session2.getMode().$id;
 						if ( mode === 'ace/mode/javascript' ) {
 							session2.$worker.send( 'changeOptions', [ {
-								maxerr: 1000
+								maxerr: 1000,
+								globals: { mw: true, mediaWiki: true, $: true, jQuery: true, OO: true }
 							} ] );
 						}
 					} );
@@ -413,10 +423,12 @@
 					} );
 
 					// Use jQuery UI resizable() so that users can make the box taller
+
 					container.resizable( {
 						handles: 's',
 						minHeight: $box.height(),
 						resize: function () {
+
 							context.codeEditor.resize();
 						}
 					} );
@@ -430,6 +442,8 @@
 					}
 
 					context.fn.setupStatusBar();
+
+					document.body.classList.remove( 'codeeditor-loading' );
 
 					// Let modules know we're ready to start working with the content
 					context.fn.trigger( 'ready' );

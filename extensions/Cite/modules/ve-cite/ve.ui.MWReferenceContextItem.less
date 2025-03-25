@@ -5,9 +5,11 @@
  * @license MIT
  */
 
+@import 'mediawiki.skin.variables.less';
+
 .ve-ui-mwReferenceContextItem {
 	&-muted {
-		color: #72777d;
+		color: @color-subtle;
 		font-style: italic;
 		line-height: 1.5;
 	}
@@ -18,8 +20,12 @@
 		word-wrap: break-word;
 		overflow-wrap: break-word;
 
-		& + .ve-ui-mwReferenceContextItem-muted {
+		+ .ve-ui-mwReferenceContextItem-muted {
 			margin-top: 0.5em;
+		}
+
+		+ .ve-ui-mwReferenceContextItemSubNote {
+			margin-bottom: 0.5em;
 		}
 	}
 }

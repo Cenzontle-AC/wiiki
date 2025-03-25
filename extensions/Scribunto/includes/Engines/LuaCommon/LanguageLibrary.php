@@ -5,18 +5,20 @@ namespace MediaWiki\Extension\Scribunto\Engines\LuaCommon;
 use DateTime;
 use DateTimeZone;
 use Exception;
-use Language;
+use MediaWiki\Language\Language;
+use MediaWiki\Language\LanguageCode;
 use MediaWiki\Languages\LanguageNameUtils;
+use MediaWiki\MainConfigNames;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
-use MWTimestamp;
-use User;
+use MediaWiki\User\User;
+use MediaWiki\Utils\MWTimestamp;
 use Wikimedia\RequestTimeout\TimeoutException;
 
 class LanguageLibrary extends LibraryBase {
 	/** @var Language[] */
 	public $langCache = [];
-	/** @var array */
+	/** @var array[] */
 	public $timeCache = [];
 	/** @var int */
 	public $maxLangCacheSize;
@@ -36,6 +38,7 @@ class LanguageLibrary extends LibraryBase {
 			'fetchLanguageName',
 			'fetchLanguageNames',
 			'getFallbacksFor',
+			'toBcp47Code',
 		];
 		$methods = [
 			'lcfirst',
@@ -164,6 +167,18 @@ class LanguageLibrary extends LibraryBase {
 	}
 
 	/**
+	 * Handler for toBcp47Code
+	 * @internal
+	 * @param string $code a MediaWiki-internal code
+	 * @return string[] a BCP-47 language tag
+	 */
+	public function toBcp47Code( $code ) {
+		$this->checkType( 'toBcp47Code', 1, $code, 'string' );
+		$ret = LanguageCode::bcp47( $code );
+		return [ $ret ];
+	}
+
+	/**
 	 * Language object method handler
 	 * @internal
 	 * @param string $name
@@ -171,8 +186,12 @@ class LanguageLibrary extends LibraryBase {
 	 * @return array
 	 * @throws LuaError
 	 */
-	public function languageMethod( $name, $args ) {
-		$name = strval( $name );
+	public function languageMethod( string $name, array $args ): array {
+		if ( !is_string( $args[0] ?? null ) ) {
+			throw new LuaError(
+				"invalid code property of language object when calling $name"
+			);
+		}
 		$code = array_shift( $args );
 		if ( !isset( $this->langCache[$code] ) ) {
 			if ( count( $this->langCache ) > $this->maxLangCacheSize ) {
@@ -341,7 +360,7 @@ class LanguageLibrary extends LibraryBase {
 		$this->checkTypeOptional( 'formatDate', 2, $args[1], 'string', '' );
 		$this->checkTypeOptional( 'formatDate', 3, $args[2], 'boolean', false );
 
-		list( $format, $date, $local ) = $args;
+		[ $format, $date, $local ] = $args;
 		$langcode = $lang->getCode();
 
 		if ( $date === '' ) {
@@ -381,9 +400,9 @@ class LanguageLibrary extends LibraryBase {
 
 		# Set output timezone.
 		if ( $local ) {
-			global $wgLocaltimezone;
-			if ( isset( $wgLocaltimezone ) ) {
-				$tz = new DateTimeZone( $wgLocaltimezone );
+			$localtimezone = MediaWikiServices::getInstance()->getMainConfig()->get( MainConfigNames::Localtimezone );
+			if ( isset( $localtimezone ) ) {
+				$tz = new DateTimeZone( $localtimezone );
 			} else {
 				$tz = new DateTimeZone( date_default_timezone_get() );
 			}
@@ -420,7 +439,7 @@ class LanguageLibrary extends LibraryBase {
 		$this->checkType( 'formatDuration', 1, $args[0], 'number' );
 		$this->checkTypeOptional( 'formatDuration', 2, $args[1], 'table', [] );
 
-		list( $seconds, $chosenIntervals ) = $args;
+		[ $seconds, $chosenIntervals ] = $args;
 		$chosenIntervals = array_values( $chosenIntervals );
 
 		$ret = $lang->formatDuration( $seconds, $chosenIntervals );
@@ -438,7 +457,7 @@ class LanguageLibrary extends LibraryBase {
 		$this->checkType( 'getDurationIntervals', 1, $args[0], 'number' );
 		$this->checkTypeOptional( 'getDurationIntervals', 2, $args[1], 'table', [] );
 
-		list( $seconds, $chosenIntervals ) = $args;
+		[ $seconds, $chosenIntervals ] = $args;
 		$chosenIntervals = array_values( $chosenIntervals );
 
 		$ret = $lang->getDurationIntervals( $seconds, $chosenIntervals );

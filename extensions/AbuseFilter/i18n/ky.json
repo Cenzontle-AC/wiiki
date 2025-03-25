@@ -1,7 +1,6 @@
 {
 	"@metadata": {
 		"authors": [
-			"Amire80",
 			"Bosogo",
 			"Growingup",
 			"Элдин беги"
@@ -47,6 +46,7 @@
 	"abusefilter-edit-status-label": "Статистика:",
 	"abusefilter-edit-new": "Жаңы фильтр",
 	"abusefilter-edit-save": "Чыпканы сакта",
+	"abusefilter-edit-switch-editor": "Башка түзөткүчтү колдонуу",
 	"abusefilter-edit-deleted": "Өчүрүлгөн деп белгилеңиз",
 	"abusefilter-edit-rules": "Шарттары:",
 	"abusefilter-edit-notes": "Эскертмелер:",
@@ -64,7 +64,7 @@
 	"abusefilter-edit-builder-op-arithmetic-divide": "Бөлүү (/)",
 	"abusefilter-edit-builder-op-arithmetic-modulo": "Модуль (%)",
 	"abusefilter-edit-builder-op-arithmetic-pow": "Даража (**)",
-	"abusefilter-edit-builder-op-bool-and": "ЖАНА (&)",
+	"abusefilter-edit-builder-op-bool-and": "Жана ($1)",
 	"abusefilter-edit-builder-op-bool-or": "ЖЕ (|)",
 	"abusefilter-edit-builder-group-funcs": "Функциялар",
 	"abusefilter-edit-builder-funcs-specialratio": "Атайын белгилер / бардык белгилер (specialratio)",

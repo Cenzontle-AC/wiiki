@@ -19,29 +19,33 @@
  */
 namespace MediaWiki\Linter;
 
-use ApiQuery;
-use ApiQueryBase;
-use ApiResult;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Api\ApiQuery;
+use MediaWiki\Api\ApiQueryBase;
+use MediaWiki\Api\ApiResult;
 
 class ApiQueryLinterStats extends ApiQueryBase {
+
+	private TotalsLookup $totalsLookup;
+
 	/**
 	 * @param ApiQuery $queryModule
+	 * @param string $moduleName
+	 * @param TotalsLookup $totalsLookup
 	 */
-	public function __construct( ApiQuery $queryModule ) {
-		parent::__construct( $queryModule, 'linterstats', 'lntrst' );
+	public function __construct(
+		ApiQuery $queryModule,
+		string $moduleName,
+		TotalsLookup $totalsLookup
+	) {
+		parent::__construct( $queryModule, $moduleName, 'lntrst' );
+		$this->totalsLookup = $totalsLookup;
 	}
 
 	/**
 	 * Add totals to output
 	 */
 	public function execute() {
-		$totalsLookup = new TotalsLookup(
-			new CategoryManager(),
-			MediaWikiServices::getInstance()->getMainWANObjectCache()
-		);
-
-		$totals = $totalsLookup->getTotals();
+		$totals = $this->totalsLookup->getTotals();
 		ApiResult::setArrayType( $totals, 'assoc' );
 		$this->getResult()->addValue( [ 'query', 'linterstats' ], 'totals', $totals );
 	}

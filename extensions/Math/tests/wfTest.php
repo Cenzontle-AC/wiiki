@@ -4,9 +4,12 @@
  */
 require_once __DIR__ . '/../../../maintenance/Maintenance.php';
 
+use MediaWiki\Content\TextContent;
 use MediaWiki\Extension\Math\MathConfig;
 use MediaWiki\Extension\Math\MathMathMLCli;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Maintenance\Maintenance;
+use MediaWiki\Parser\Parser;
+use MediaWiki\Parser\Sanitizer;
 use MediaWiki\Title\Title;
 
 class WfTest extends Maintenance {
@@ -24,7 +27,7 @@ class WfTest extends Maintenance {
 		$this->addOption( 'user', "User with rights to view the page", false, true, "u" );
 	}
 
-	private static function getMathTagsFromPage( $titleString ) {
+	private function getMathTagsFromPage( $titleString ) {
 		global $wgEnableScaryTranscluding;
 		$title = Title::newFromText( $titleString );
 		if ( $title->exists() ) {
@@ -36,7 +39,7 @@ class WfTest extends Maintenance {
 		} else {
 			if ( $title == self::REFERENCE_PAGE ) {
 				$wgEnableScaryTranscluding = true;
-				$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
+				$parser = $this->getServiceContainer()->getParserFactory()->create();
 				$wikiText = $parser->interwikiTransclude( $title, 'raw' );
 			} else {
 				return 'Page does not exist';
@@ -57,7 +60,7 @@ class WfTest extends Maintenance {
 		$offset = $this->getOption( 'offset', 0 );
 		$length = $this->getOption( 'length', PHP_INT_MAX );
 		$userName = $this->getOption( 'user', 'Maintenance script' );
-		$allEquations = self::getMathTagsFromPage( $page );
+		$allEquations = $this->getMathTagsFromPage( $page );
 		if ( !is_array( $allEquations ) ) {
 			echo "Could not get equations from page '$page'\n";
 			echo $allEquations . PHP_EOL;
@@ -68,7 +71,7 @@ class WfTest extends Maintenance {
 		}
 		$i = 0;
 		$rend = [];
-		$rendererFactory = MediaWikiServices::getInstance()->get( 'Math.RendererFactory' );
+		$rendererFactory = $this->getServiceContainer()->get( 'Math.RendererFactory' );
 		foreach ( array_slice( $allEquations, $offset, $length, true ) as $input ) {
 			$renderer = $rendererFactory->getRenderer( $input[1], $input[2], MathConfig::MODE_MATHML );
 			if ( $renderer->render() ) {
@@ -77,7 +80,6 @@ class WfTest extends Maintenance {
 				$output = $renderer->getLastError();
 			}
 			$rend[] = [ $renderer, $input ];
-			$output = preg_replace( '#src="(.*?)/(([a-f]|\d)*).png"#', 'src="\2.png"', $output );
 			$parserTests[] = [ (string)$input[1], $output ];
 			$i++;
 			echo '.';

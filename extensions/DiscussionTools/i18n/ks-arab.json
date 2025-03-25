@@ -3,7 +3,8 @@
 		"authors": [
 			"Iflaq",
 			"Tajamul9",
-			"Teashae"
+			"Teashae",
+			"Matma Rex"
 		]
 	},
 	"discussiontools": "کَتھ باتھ اَوزار",
@@ -26,7 +27,7 @@
 	"discussiontools-newtopicssubscription-button-subscribe-label": "سَبَسکرایِب",
 	"discussiontools-pageframe-latestcomment": "تازٕ کَتھ باتھ: $1 صٲرِف $2 دٔسؠ $3 موضوٗعَس پؠٹھ",
 	"discussiontools-postedit-confirmation-topicadded": "تُہُنٛد موضوٗع آو شایع کَرنہٕ.",
-	"discussiontools-replybutton": "جَوآب",
+	"discussiontools-replybutton": "{{GENDER:|جَوآب}}",
 	"discussiontools-replylink": "{{GENDER:|جَواب دِیِو}}",
 	"discussiontools-replywidget-advanced": "اِضٲفِی",
 	"discussiontools-replywidget-cancel": "مَنسوٗخ",
@@ -60,7 +61,6 @@
 	"discussiontools-topicsubscription-pager-page": "صَفہٕ",
 	"discussiontools-topicsubscription-pager-topic": "موضوٗع",
 	"discussiontools-topicsubscription-pager-unsubscribe-button": "سَبَسکرایِب کٔرِو رَد",
-	"minerva-talk-full-page": "وِکی صَفٕک پٲتھؠ پٔرِٛو",
 	"tag-discussiontools-newtopic": "[{{int:discussiontools-replywidget-newtopic-link}} نٔو موضوٗع ]",
 	"tag-discussiontools-reply": "[{{int:discussiontools-replywidget-reply-link}} جَواب]"
 }

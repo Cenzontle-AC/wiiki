@@ -2,9 +2,9 @@
 
 namespace MediaWiki\Extension\DiscussionTools;
 
-use ApiBase;
-use ApiMain;
-use ApiUsageException;
+use MediaWiki\Api\ApiBase;
+use MediaWiki\Api\ApiMain;
+use MediaWiki\Api\ApiUsageException;
 use MediaWiki\Extension\VisualEditor\ApiParsoidTrait;
 use MediaWiki\Extension\VisualEditor\VisualEditorParsoidClientFactory;
 use MediaWiki\Title\Title;
@@ -79,10 +79,8 @@ class ApiDiscussionToolsPreview extends ApiBase {
 			$signature = $this->msg( 'discussiontools-signature-prefix' )->inContentLanguage()->text() . '~~~~';
 			// Drop opacity of signature in preview to make message body preview clearer.
 			// Extract any leading spaces outside the <span> markup to ensure accurate previews.
-			$signature = preg_replace_callback( '/^( *)(.+)$/', static function ( $matches ) {
-				list( , $leadingSpaces, $sig ) = $matches;
-				return $leadingSpaces . '<span style="opacity: 0.6;">' . $sig . '</span>';
-			}, $signature );
+			$signature = preg_replace( '/([^ ].*)/', '<span style="opacity: 0.6;">$1</span>',
+				$signature );
 
 			$result = $this->previewMessage(
 				$params['type'],

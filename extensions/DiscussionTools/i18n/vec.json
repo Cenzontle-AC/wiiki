@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Fierodelveneto"
+			"Fierodelveneto",
+			"Woytecr"
 		]
 	},
 	"discussiontools-defaultsummary-reply": "Resposta",
@@ -33,7 +34,7 @@
 	"discussiontools-preference-sourcemodetoolbar": "Abìłita instruminti sperimentałi inte łe modałità de resposta ràpida e inte łe zonte ràpide de argomentasion.",
 	"discussiontools-preference-topicsubscription": "Abìłita l'iscrision a l'argomentasion",
 	"discussiontools-preference-topicsubscription-help": "Sto cuà el te consentarà de risévar na notìfega so cominti o sìngułi argomentasion. Par savèrghene de pì védarse: [https://www.mediawiki.org/wiki/Special:MyLanguage/Talk_pages_project/Feature_summary resunto de łe funsionałità].",
-	"discussiontools-replylink": "respondi",
+	"discussiontools-replylink": "{{GENDER:|respondi}}",
 	"discussiontools-replywidget-abandon": "Seguro de vołer sbandonar el comento sensa inviar?",
 	"discussiontools-replywidget-abandon-discard": "Sbandona comento",
 	"discussiontools-replywidget-abandon-keep": "Sèvita scrìvar",
@@ -65,7 +66,6 @@
 	"discussiontools-topicsubscription-notify-unsubscribed-title": "No te ła tien altro d'òcio",
 	"echo-category-title-dt-subscription": "Tien d'òcio sta pàzena de discusion",
 	"echo-pref-tooltip-dt-subscription": "Notìfegame revardo łe nove atività inte i argominti che tegno d'òcio",
-	"minerva-talk-full-page": "Lexi cofà ła fuse na pàjina desktop",
 	"tag-discussiontools-description": "Cànbio fazesto doparando  ła Toła de Discusion",
 	"tag-discussiontools-edit": "Cànbia el comento",
 	"tag-discussiontools-edit-description": "L'utensa ła canbià un comento ezistente co ła Toła de Discusion",

@@ -6,7 +6,8 @@
 		.editor-textarea();
 	}
 
-	.editHelp, .cancelLink {
+	.editHelp,
+	.cancelLink {
 		display: none;
 	}
 
@@ -18,11 +19,9 @@
 
 .action-submit,
 .action-edit {
-	// FIXME: Remove #page-actions when cache has cleared
 	// stylelint-disable selector-max-id
 	#page-secondary-actions,
-	#p-views,
-	#page-actions {
+	#p-views {
 		display: none;
 	}
 
@@ -45,7 +44,6 @@
 	// the page title (.mw-first-heading)
 	// or all the warnings (#editpage-copywarn, #mw-anon-edit-warning)
 	.mw-editnotice,
-	.mw-editTools,
 	.preview-limit-report-wrapper,
 	.diff-otitle,
 	.diff-ntitle,

@@ -2,9 +2,9 @@
 
 namespace MediaWiki\Extension\Notifications;
 
+use MediaWiki\User\Options\UserOptionsLookup;
 use MediaWiki\User\UserGroupManager;
 use MediaWiki\User\UserIdentity;
-use MediaWiki\User\UserOptionsLookup;
 
 /**
  * An object that manages attributes of echo notifications: category, eligibility,
@@ -282,9 +282,9 @@ class AttributeManager {
 	 * Gets an associative array mapping categories to the notification types in
 	 * the category
 	 *
-	 * @return array[] Associative array with category as key
+	 * @return array<string,string[]> Associative array with category as key
 	 */
-	public function getEventsByCategory() {
+	public function getEventsByCategory(): array {
 		$eventsByCategory = [];
 
 		foreach ( $this->categories as $category => $categoryDetails ) {

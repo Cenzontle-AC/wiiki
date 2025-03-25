@@ -1,7 +1,12 @@
 <?php
 
+namespace MediaWiki\Extension\Notifications\Test\API;
+
+use MediaWiki\Api\ApiUsageException;
 use MediaWiki\Extension\Notifications\Push\Utils;
 use MediaWiki\Extension\Notifications\Services;
+use MediaWiki\Tests\Api\ApiTestCase;
+use MediaWiki\User\User;
 
 /**
  * @group medium
@@ -22,12 +27,10 @@ class ApiEchoPushSubscriptionsDeleteTest extends ApiTestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		$this->setMwGlobals( [
-			'wgEchoEnablePush' => true,
-			'wgEchoPushMaxSubscriptionsPerUser' => 3
+		$this->overrideConfigValues( [
+			'EchoEnablePush' => true,
+			'EchoPushMaxSubscriptionsPerUser' => 3,
 		] );
-		$this->tablesUsed[] = 'echo_push_subscription';
-		$this->tablesUsed[] = 'echo_push_provider';
 
 		// Use mutable users for our generic users so we don't get two references to the same User
 		$this->user = $this->getMutableTestUser()->getUser();

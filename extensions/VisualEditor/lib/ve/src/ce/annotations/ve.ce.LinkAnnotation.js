@@ -1,7 +1,7 @@
 /*!
  * VisualEditor ContentEditable LinkAnnotation class.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 /**
@@ -9,7 +9,7 @@
  *
  * @class
  * @extends ve.ce.Annotation
- * @mixins ve.ce.NailedAnnotation
+ * @mixes ve.ce.NailedAnnotation
  * @constructor
  * @param {ve.dm.LinkAnnotation} model Model to observe
  * @param {ve.ce.ContentBranchNode} [parentNode] Node rendering this annotation

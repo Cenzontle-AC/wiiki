@@ -2,11 +2,11 @@
 
 namespace MediaWiki\Extension\DiscussionTools\Hooks;
 
-use Config;
-use ConfigFactory;
+use MediaWiki\Config\Config;
+use MediaWiki\Config\ConfigFactory;
 use MediaWiki\Extension\BetaFeatures\Hooks\GetBetaFeaturePreferencesHook;
 use MediaWiki\MainConfigNames;
-use User;
+use MediaWiki\User\User;
 
 /**
  * Hooks from BetaFeatures extension,
@@ -27,12 +27,21 @@ class BetaPreferenceHooks implements GetBetaFeaturePreferencesHook {
 
 	/**
 	 * Handler for the GetBetaFeaturePreferences hook, to add and hide user beta preferences as configured
-	 *
-	 * @param User $user
-	 * @param array &$preferences
 	 */
 	public function onGetBetaFeaturePreferences( User $user, array &$preferences ) {
 		if ( $this->config->get( 'DiscussionToolsBeta' ) ) {
+			// If all configurable features are marked as 'available', the
+			// beta fetaure enables nothing, so don't show it.
+			$allAvailable = true;
+			foreach ( HookUtils::CONFIGS as $feature ) {
+				if ( $this->config->get( 'DiscussionTools_' . $feature ) !== 'available' ) {
+					$allAvailable = false;
+					break;
+				}
+			}
+			if ( $allAvailable ) {
+				return;
+			}
 			$iconpath = $this->coreConfig->get( MainConfigNames::ExtensionAssetsPath ) . '/DiscussionTools/images';
 			$preferences['discussiontools-betaenable'] = [
 				'version' => '1.0',

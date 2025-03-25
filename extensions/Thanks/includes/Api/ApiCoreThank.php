@@ -2,11 +2,11 @@
 
 namespace MediaWiki\Extension\Thanks\Api;
 
-use ApiBase;
-use ApiMain;
 use DatabaseLogEntry;
-use EchoDiscussionParser;
 use LogEntry;
+use MediaWiki\Api\ApiBase;
+use MediaWiki\Api\ApiMain;
+use MediaWiki\Extension\Notifications\DiscussionParser;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\Thanks\Storage\Exceptions\InvalidLogType;
 use MediaWiki\Extension\Thanks\Storage\Exceptions\LogDeleted;
@@ -15,9 +15,9 @@ use MediaWiki\Permissions\PermissionManager;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\RevisionStore;
 use MediaWiki\Title\Title;
+use MediaWiki\User\User;
 use MediaWiki\User\UserFactory;
 use MediaWiki\User\UserIdentity;
-use User;
 use Wikimedia\ParamValidator\ParamValidator;
 use Wikimedia\ParamValidator\TypeDef\IntegerDef;
 
@@ -93,7 +93,7 @@ class ApiCoreThank extends ApiThank {
 		}
 		if ( $type === 'rev' ) {
 			$revision = $this->getRevisionFromId( $id );
-			$excerpt = EchoDiscussionParser::getEditExcerpt( $revision, $this->getLanguage() );
+			$excerpt = DiscussionParser::getEditExcerpt( $revision, $this->getLanguage() );
 			$title = $this->getTitleFromRevision( $revision );
 			$this->dieOnUserBlockedFromTitle( $user, $title );
 

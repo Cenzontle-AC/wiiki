@@ -1,12 +1,5 @@
-/*!
- * VisualEditor ContentEditable MWPingNode class.
- *
- * @copyright 2011-2020 VisualEditor Team and others; see AUTHORS.txt
- * @license The MIT License (MIT); see LICENSE.txt
- */
-
 /**
- * ContentEditable MediaWiki ping node.
+ * PingNode view.
  *
  * @class
  * @extends ve.ce.LeafNode
@@ -48,7 +41,7 @@ CeMWPingNode.static.getDescription = function ( model ) {
  * @inheritdoc
  */
 CeMWPingNode.prototype.initialize = function () {
-	var model = this.getModel(),
+	const model = this.getModel(),
 		prefix = mw.msg( 'discussiontools-replywidget-mention-prefix' ),
 		suffix = mw.msg( 'discussiontools-replywidget-mention-suffix' ),
 		user = model.getAttribute( 'user' ),
@@ -58,7 +51,7 @@ CeMWPingNode.prototype.initialize = function () {
 	CeMWPingNode.super.prototype.initialize.call( this );
 
 	// DOM changes
-	var $link = $( '<a>' )
+	const $link = $( '<a>' )
 		.addClass( 'ext-discussiontools-ce-mwPingNode' )
 		.attr( {
 			href: title.getUrl(),

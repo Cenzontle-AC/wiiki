@@ -2,19 +2,16 @@
 
 namespace MediaWiki\Extension\DiscussionTools\Tests;
 
-use Language;
 use MediaWiki\Extension\DiscussionTools\CommentFormatter;
 use MediaWiki\Extension\DiscussionTools\CommentParser;
+use MediaWiki\Language\Language;
 use MediaWiki\User\UserIdentity;
-use MWTimestamp;
+use MediaWiki\Utils\MWTimestamp;
 
 class MockCommentFormatter extends CommentFormatter {
 
 	public static CommentParser $parser;
 
-	/**
-	 * @return CommentParser
-	 */
 	protected static function getParser(): CommentParser {
 		return static::$parser;
 	}

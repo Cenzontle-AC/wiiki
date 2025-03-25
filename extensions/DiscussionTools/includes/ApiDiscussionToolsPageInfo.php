@@ -2,9 +2,9 @@
 
 namespace MediaWiki\Extension\DiscussionTools;
 
-use ApiBase;
-use ApiMain;
-use ApiUsageException;
+use MediaWiki\Api\ApiBase;
+use MediaWiki\Api\ApiMain;
+use MediaWiki\Api\ApiUsageException;
 use MediaWiki\Extension\DiscussionTools\Hooks\HookUtils;
 use MediaWiki\Extension\DiscussionTools\ThreadItem\CommentItem;
 use MediaWiki\Extension\DiscussionTools\ThreadItem\ContentCommentItem;
@@ -121,9 +121,6 @@ class ApiDiscussionToolsPageInfo extends ApiBase {
 
 	/**
 	 * Get transcluded=from data for a ContentThreadItemSet
-	 *
-	 * @param ContentThreadItemSet $threadItemSet
-	 * @return array
 	 */
 	private static function getTranscludedFrom( ContentThreadItemSet $threadItemSet ): array {
 		$threadItems = $threadItemSet->getThreadItems();
@@ -150,16 +147,12 @@ class ApiDiscussionToolsPageInfo extends ApiBase {
 
 	/**
 	 * Get thread items HTML for a ContentThreadItemSet
-	 *
-	 * @param ContentThreadItemSet $threadItemSet
-	 * @param bool $excludeSignatures
-	 * @return array
 	 */
 	private static function getThreadItemsHtml( ContentThreadItemSet $threadItemSet, bool $excludeSignatures ): array {
 		// This function assumes that the start of the ranges associated with
 		// HeadingItems are going to be at the start of their associated
 		// heading node (`<h2>^heading</h2>`), i.e. in the position generated
-		// by getHeadlineNodeAndOffset.
+		// by getHeadlineNode.
 		$threads = $threadItemSet->getThreads();
 		if ( count( $threads ) > 0 && !$threads[0]->isPlaceholderHeading() ) {
 			$firstHeading = $threads[0];
@@ -173,7 +166,7 @@ class ApiDiscussionToolsPageInfo extends ApiBase {
 			$closest = CommentUtils::closestElementWithSibling( $firstRange->startContainer, 'previous' );
 			if ( $closest && !$rootNode->isSameNode( $closest ) ) {
 				$range = new ImmutableRange( $rootNode, 0, $rootNode, 0 );
-				$fakeHeading = new ContentHeadingItem( $range, null );
+				$fakeHeading = new ContentHeadingItem( $range, false, null );
 				$fakeHeading->setRootNode( $rootNode );
 				$fakeHeading->setName( 'h-' );
 				$fakeHeading->setId( 'h-' );

@@ -59,23 +59,27 @@ class Hooks implements UserGetAllRightsHook {
 
 	public static function onInterwikiLoadPrefix( $prefix, &$iwData ) {
 		global $wgInterwikiCentralDB, $wgInterwikiCentralInterlanguageDB;
-		$isInterlanguageLink = MediaWikiServices::getInstance()->getLanguageNameUtils()->getLanguageName( $prefix );
+
+		$services = MediaWikiServices::getInstance();
+		$connectionProvider = $services->getConnectionProvider();
+		$isInterlanguageLink = $services->getLanguageNameUtils()->getLanguageName( $prefix );
 		if ( !$isInterlanguageLink && !self::$shouldSkipIWCheck ) {
 			// Check if prefix exists locally and skip
-			$lookup = MediaWikiServices::getInstance()->getInterwikiLookup();
+			$lookup = $services->getInterwikiLookup();
 			foreach ( $lookup->getAllPrefixes( null ) as $id => $localPrefixInfo ) {
 				if ( $prefix === $localPrefixInfo['iw_prefix'] ) {
 					return true;
 				}
 			}
-			// @phan-suppress-next-line PhanTypeMismatchArgument
-			$dbr = wfGetDB( DB_REPLICA, [], $wgInterwikiCentralDB );
-			$res = $dbr->selectRow(
-				'interwiki',
-				'*',
-				[ 'iw_prefix' => $prefix ],
-				__METHOD__
-			);
+
+			$dbrCentralDB = $connectionProvider->getReplicaDatabase( $wgInterwikiCentralDB ?? false );
+
+			$res = $dbrCentralDB->newSelectQueryBuilder()
+				->select( '*' )
+				->from( 'interwiki' )
+				->where( [ 'iw_prefix' => $prefix ] )
+				->caller( __METHOD__ )
+				->fetchRow();
 			if ( !$res ) {
 				return true;
 			}
@@ -85,14 +89,14 @@ class Hooks implements UserGetAllRightsHook {
 			return false;
 		} elseif ( $isInterlanguageLink && !self::$shouldSkipILCheck ) {
 			// Global interlanguage link? Whoo!
-			// @phan-suppress-next-line PhanTypeMismatchArgument
-			$dbr = wfGetDB( DB_REPLICA, [], $wgInterwikiCentralInterlanguageDB );
-			$res = $dbr->selectRow(
-				'interwiki',
-				'*',
-				[ 'iw_prefix' => $prefix ],
-				__METHOD__
-			);
+			$dbrCentralLangDB = $connectionProvider->getReplicaDatabase( $wgInterwikiCentralInterlanguageDB ?? false );
+
+			$res = $dbrCentralLangDB->newSelectQueryBuilder()
+				->select( '*' )
+				->from( 'interwiki' )
+				->where( [ 'iw_prefix' => $prefix ] )
+				->caller( __METHOD__ )
+				->fetchRow();
 			if ( !$res ) {
 				return false;
 			}

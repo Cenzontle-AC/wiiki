@@ -2,7 +2,7 @@
 
 namespace MediaWiki\Minerva;
 
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Config\ConfigFactory;
 use MobileContext;
 use MobileFrontend\Features\Feature;
 use MobileFrontend\Features\FeaturesManager;
@@ -19,73 +19,89 @@ class MobileFrontendHooks implements
 	MobileFrontendFeaturesRegistrationHook,
 	RequestContextCreateSkinMobileHook
 {
+	private ConfigFactory $configFactory;
+	private SkinOptions $skinOptions;
+
+	public function __construct(
+		ConfigFactory $configFactory,
+		SkinOptions $skinOptions
+	) {
+		$this->configFactory = $configFactory;
+		$this->skinOptions = $skinOptions;
+	}
 
 	/**
 	 * Register mobile web beta features
 	 * @see https://www.mediawiki.org/wiki/
 	 *  Extension:MobileFrontend/MobileFrontendFeaturesRegistration
 	 *
-	 * @param FeaturesManager $featureManager
+	 * @param FeaturesManager $featuresManager
 	 */
-	public function onMobileFrontendFeaturesRegistration( FeaturesManager $featureManager ) {
-		$config = MediaWikiServices::getInstance()->getConfigFactory()
-			->makeConfig( 'minerva' );
+	public function onMobileFrontendFeaturesRegistration( FeaturesManager $featuresManager ) {
+		$config = $this->configFactory->makeConfig( 'minerva' );
 
 		try {
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaShowCategories',
 					'skin-minerva',
 					$config->get( 'MinervaShowCategories' )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaPageIssuesNewTreatment',
 					'skin-minerva',
 					$config->get( 'MinervaPageIssuesNewTreatment' )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaTalkAtTop',
 					'skin-minerva',
 					$config->get( 'MinervaTalkAtTop' )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaDonateLink',
 					'skin-minerva',
 					$config->get( 'MinervaDonateLink' )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaHistoryInPageActions',
 					'skin-minerva',
 					$config->get( 'MinervaHistoryInPageActions' )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					Hooks::FEATURE_OVERFLOW_PAGE_ACTIONS,
 					'skin-minerva',
 					$config->get( Hooks::FEATURE_OVERFLOW_PAGE_ACTIONS )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaAdvancedMainMenu',
 					'skin-minerva',
 					$config->get( 'MinervaAdvancedMainMenu' )
 				)
 			);
-			$featureManager->registerFeature(
+			$featuresManager->registerFeature(
 				new Feature(
 					'MinervaPersonalMenu',
 					'skin-minerva',
 					$config->get( 'MinervaPersonalMenu' )
+				)
+			);
+			$featuresManager->registerFeature(
+				new Feature(
+					'MinervaNightMode',
+					'skin-minerva',
+					$config->get( 'MinervaNightMode' )
 				)
 			);
 		} catch ( RuntimeException $e ) {
@@ -104,6 +120,6 @@ class MobileFrontendHooks implements
 	public function onRequestContextCreateSkinMobile(
 		MobileContext $mobileContext, Skin $skin
 	) {
-		Hooks::setMinervaSkinOptions( $mobileContext, $skin );
+		$this->skinOptions->setMinervaSkinOptions( $mobileContext, $skin );
 	}
 }

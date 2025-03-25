@@ -2,14 +2,14 @@
 
 namespace MediaWiki\Extension\CiteThisPage;
 
-use FormSpecialPage;
-use Html;
-use HTMLForm;
+use MediaWiki\Html\Html;
+use MediaWiki\HTMLForm\HTMLForm;
+use MediaWiki\Parser\Parser;
+use MediaWiki\Parser\ParserFactory;
+use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Revision\RevisionLookup;
+use MediaWiki\SpecialPage\FormSpecialPage;
 use MediaWiki\Title\Title;
-use Parser;
-use ParserFactory;
-use ParserOptions;
 use SearchEngineFactory;
 
 class SpecialCiteThisPage extends FormSpecialPage {

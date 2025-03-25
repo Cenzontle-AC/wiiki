@@ -7,8 +7,8 @@ use Iterator;
 use MediaWiki\Extension\Notifications\Iterator\CallbackIterator;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\User\User;
 use RecursiveIteratorIterator;
-use User;
 
 class UserLocator {
 	/**
@@ -26,9 +26,9 @@ class UserLocator {
 		if ( !$title ) {
 			return [];
 		}
-
+		$provider = MediaWikiServices::getInstance()->getConnectionProvider();
 		$batchRowIt = new BatchRowIterator(
-			wfGetDB( DB_REPLICA, 'watchlist' ),
+			$provider->getReplicaDatabase( false, 'watchlist' ),
 			/* $table = */ 'watchlist',
 			/* $primaryKeys = */ [ 'wl_user' ],
 			$batchSize
@@ -138,16 +138,17 @@ class UserLocator {
 	 * @return User|null
 	 */
 	public static function getArticleAuthorByArticleId( int $articleId ): ?User {
-		$dbr = wfGetDB( DB_REPLICA );
-		$revQuery = MediaWikiServices::getInstance()->getRevisionStore()->getQueryInfo();
-		$res = $dbr->selectRow(
-			$revQuery['tables'],
-			[ 'rev_user' => $revQuery['fields']['rev_user'] ],
-			[ 'rev_page' => $articleId ],
-			__METHOD__,
-			[ 'LIMIT' => 1, 'ORDER BY' => 'rev_timestamp, rev_id' ],
-			$revQuery['joins']
-		);
+		$services = MediaWikiServices::getInstance();
+		$dbr = $services->getConnectionProvider()->getReplicaDatabase();
+		$revQuery = $services->getRevisionStore()->getQueryInfo();
+		$res = $dbr->newSelectQueryBuilder()
+			->select( [ 'rev_user' => $revQuery['fields']['rev_user'] ] )
+			->tables( $revQuery['tables'] )
+			->where( [ 'rev_page' => $articleId ] )
+			->orderBy( [ 'rev_timestamp', 'rev_id' ] )
+			->joinConds( $revQuery['joins'] )
+			->caller( __METHOD__ )
+			->fetchRow();
 		if ( !$res || !$res->rev_user ) {
 			return null;
 		}
@@ -167,7 +168,7 @@ class UserLocator {
 	 *
 	 * @param Event $event
 	 * @param string[] $keys one or more keys to check for user ids
-	 * @return User[]
+	 * @return array<int,User>
 	 */
 	public static function locateFromEventExtra( Event $event, array $keys ) {
 		$users = [];

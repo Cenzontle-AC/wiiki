@@ -3,7 +3,6 @@
 		"authors": [
 			"Abbaty",
 			"Aliyu shaba",
-			"Amire80",
 			"Bashir Gwanki",
 			"Bello Na'im",
 			"Em-em",
@@ -14,7 +13,7 @@
 		]
 	},
 	"discussiontools-autotopicsubpopup-body": "Za ku sami sanarwa a yadda wani yayi sabon sharhi a cikin wannan tattaunawar.  Kuna iya daidaita saitin sanarwarku a cikin zaɓin zaɓi.",
-	"discussiontools-autotopicsubpopup-dismiss": "Yauwa, Na Samu..",
+	"discussiontools-autotopicsubpopup-dismiss": "Yauwa, na samu",
 	"discussiontools-autotopicsubpopup-preferences": "Gyara zaɓuɓɓuka",
 	"discussiontools-autotopicsubpopup-title": "Kun shiga cikin masu karɓar saƙo.",
 	"discussiontools-defaultsummary-reply": "Mayarwa",
@@ -63,7 +62,7 @@
 	"discussiontools-preference-sourcemodetoolbar-help": "Wannan zai ƙara mashaya kayan aiki zuwa amsa mai sauri da kuma saurin magana yana ƙara hanyoyin tushen fasali waɗanda suka haɗa da gajerun hanyoyi don ping da ƙara hanyoyin haɗin gwiwa.",
 	"discussiontools-preference-topicsubscription": "Kunna biyan kuɗin batu",
 	"discussiontools-preference-topicsubscription-help": "Wannan zai ba ku damar yin rajista don karɓar sanarwa game da sharhi kan batutuwa guda ɗaya.",
-	"discussiontools-replylink": "Mai da",
+	"discussiontools-replylink": "{{GENDER:|Mai da}}",
 	"discussiontools-replywidget-abandon": "Shin kun tabbata kuna son watsar da sharhin da kuke rubutawa?",
 	"discussiontools-replywidget-abandon-discard": "Yi watsi da sharhi",
 	"discussiontools-replywidget-abandon-keep": "Ci gaba da rubutu",
@@ -88,6 +87,5 @@
 	"discussiontools-topicsubscription-pager-unsubscribe-button": "Rashin samun dama",
 	"discussiontools-topicsubscription-special-title": "Maudu'an da aka zaba",
 	"echo-category-title-dt-subscription": "Shafin magana{{PLURAL:$1|}}",
-	"echo-pref-tooltip-dt-subscription": "ku sanar dani idan wani ya wallafa sabon tsokaci akan maudu'in dana zaba",
-	"minerva-talk-full-page": "Karanta amatsayin shafi na wiki"
+	"echo-pref-tooltip-dt-subscription": "ku sanar dani idan wani ya wallafa sabon tsokaci akan maudu'in dana zaba"
 }

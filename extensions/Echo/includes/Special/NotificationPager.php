@@ -2,12 +2,12 @@
 
 namespace MediaWiki\Extension\Notifications\Special;
 
-use Exception;
-use IContextSource;
+use LogicException;
+use MediaWiki\Context\IContextSource;
 use MediaWiki\Extension\Notifications\DbFactory;
 use MediaWiki\Extension\Notifications\Model\Notification;
 use MediaWiki\Extension\Notifications\Services;
-use ReverseChronologicalPager;
+use MediaWiki\Pager\ReverseChronologicalPager;
 
 /**
  * This pager is used by Special:Notifications (NO-JS).
@@ -15,9 +15,7 @@ use ReverseChronologicalPager;
  * It paginates on notification_event for a specific user, only for the enabled event types.
  */
 class NotificationPager extends ReverseChronologicalPager {
-	/**
-	 * @param IContextSource $context
-	 */
+
 	public function __construct( IContextSource $context ) {
 		$dbFactory = DbFactory::newFromDefault();
 		$this->mDb = $dbFactory->getEchoDb( DB_REPLICA );
@@ -27,7 +25,7 @@ class NotificationPager extends ReverseChronologicalPager {
 
 	public function formatRow( $row ) {
 		// @phan-suppress-previous-line PhanPluginNeverReturnMethod LSP violation
-		throw new Exception( "This pager does not support row formatting. " .
+		throw new LogicException( "This pager does not support row formatting. " .
 			"Use 'getNotifications()' to get a list of Notification objects." );
 	}
 

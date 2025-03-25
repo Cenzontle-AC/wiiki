@@ -5,7 +5,8 @@
 			"Bikarhêner",
 			"Biyolojiyabikurdi",
 			"Ghybu",
-			"Guherto"
+			"Guherto",
+			"Woytecr"
 		]
 	},
 	"discussiontools": "Amûrên gotûbêjê",
@@ -64,8 +65,8 @@
 	"discussiontools-preference-replytool": "Bersivandina bilez çalak bike",
 	"discussiontools-preference-replytool-help": "Ev amûr lînkekê dide ku di rûpelên gotûbêjê de ji bo bersivdayîneke bilez tê bikaranîn.",
 	"discussiontools-preference-topicsubscription": "Şopandina mijaran çalak bike",
-	"discussiontools-replybutton": "Bersiv bide",
-	"discussiontools-replylink": "bersiv bide",
+	"discussiontools-replybutton": "{{GENDER:|Bersiv bide}}",
+	"discussiontools-replylink": "{{GENDER:|bersiv bide}}",
 	"discussiontools-replywidget-abandon": "Bi rastî dixwazî bersiva xwe ya ku niha dinivîsî jê bibî?",
 	"discussiontools-replywidget-abandon-discard": "Şiroveyê jê bibe",
 	"discussiontools-replywidget-abandon-keep": "Nivîsînê bidomîne",
@@ -110,7 +111,6 @@
 	"discussiontools-topicsubscription-notify-subscribed-title": "Tu bûyî abone!",
 	"discussiontools-topicsubscription-notify-unsubscribed-body": "Tu yê êdî danezanên di derbarê şîroveyên nû yên vê mijarê de nebînî.",
 	"discussiontools-topicsubscription-notify-unsubscribed-title": "Te ji abonetiyê derket.",
-	"minerva-talk-full-page": "Wekî rûpela wîkiyê bixwîne",
 	"tag-discussiontools-description": "Bi DiscussionToolsê re hat guhartin",
 	"tag-discussiontools-edit": "Şiroveya guhartî",
 	"tag-discussiontools-edit-description": "Bikarhêner şîroveke heyî bi DiscussionToolsê re guhart",

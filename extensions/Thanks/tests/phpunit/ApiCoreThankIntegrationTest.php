@@ -1,5 +1,10 @@
 <?php
 
+use MediaWiki\Api\ApiUsageException;
+use MediaWiki\Deferred\DeferredUpdates;
+use MediaWiki\Tests\Api\ApiTestCase;
+use MediaWiki\User\User;
+
 /**
  * Integration tests for the Thanks API module
  *
@@ -66,7 +71,7 @@ class ApiCoreThankIntegrationTest extends ApiTestCase {
 	}
 
 	public function testValidRevRequest() {
-		list( $result,, ) = $this->doApiRequestWithToken( [
+		[ $result,, ] = $this->doApiRequestWithToken( [
 			'action' => 'thank',
 			'rev' => $this->revId,
 		], null, $this->getTestSysop()->getUser() );
@@ -74,7 +79,7 @@ class ApiCoreThankIntegrationTest extends ApiTestCase {
 	}
 
 	public function testValidLogRequest() {
-		list( $result,, ) = $this->doApiRequestWithToken( [
+		[ $result,, ] = $this->doApiRequestWithToken( [
 			'action' => 'thank',
 			'log' => $this->logId,
 		], null, $this->getTestSysop()->getUser() );
@@ -82,7 +87,7 @@ class ApiCoreThankIntegrationTest extends ApiTestCase {
 	}
 
 	public function testLogRequestWithDisallowedLogType() {
-		$this->setMwGlobals( [ 'wgThanksAllowedLogTypes' => [] ] );
+		$this->overrideConfigValue( 'ThanksAllowedLogTypes', [] );
 		$this->expectApiErrorCode( 'thanks-error-invalid-log-type' );
 		$this->doApiRequestWithToken( [
 			'action' => 'thank',
@@ -91,16 +96,15 @@ class ApiCoreThankIntegrationTest extends ApiTestCase {
 	}
 
 	public function testLogThanksForADeletedLogEntry() {
-		$this->mergeMwGlobalArrayValue( 'wgGroupPermissions', [
+		$this->setGroupPermissions( [
 			'logdeleter' => [
 				'read' => true,
-				'writeapi' => true,
 				'deletelogentry' => true
 			]
 		] );
 
 		// Mark our test log entry as deleted.
-		// To do this we briefly switch to a different test user.
+		// To do this, we briefly switch to a different test user.
 		$logdeleter = $this->getTestUser( [ 'logdeleter' ] )->getUser();
 		$this->doApiRequestWithToken( [
 			'action' => 'revisiondelete',
@@ -119,7 +123,7 @@ class ApiCoreThankIntegrationTest extends ApiTestCase {
 	}
 
 	public function testValidRequestWithSource() {
-		list( $result,, ) = $this->doApiRequestWithToken( [
+		[ $result,, ] = $this->doApiRequestWithToken( [
 			'action' => 'thank',
 			'source' => 'someSource',
 			'rev' => $this->revId,

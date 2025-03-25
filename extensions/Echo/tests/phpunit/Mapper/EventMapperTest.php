@@ -1,22 +1,22 @@
 <?php
 
+namespace MediaWiki\Extension\Notifications\Test\Integration\Mapper;
+
+use InvalidArgumentException;
 use MediaWiki\Extension\Notifications\DbFactory;
 use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWikiIntegrationTestCase;
+use Wikimedia\Rdbms\FakeResultWrapper;
 use Wikimedia\Rdbms\IDatabase;
+use Wikimedia\Rdbms\InsertQueryBuilder;
+use Wikimedia\Rdbms\SelectQueryBuilder;
 
 /**
  * @group Database
  * @covers \MediaWiki\Extension\Notifications\Mapper\EventMapper
  */
 class EventMapperTest extends MediaWikiIntegrationTestCase {
-
-	protected function setUp(): void {
-		parent::setUp();
-		$this->tablesUsed[] = 'echo_event';
-		$this->tablesUsed[] = 'echo_notification';
-		$this->tablesUsed[] = 'echo_target_page';
-	}
 
 	public static function provideDataTestInsert() {
 		return [
@@ -109,7 +109,7 @@ class EventMapperTest extends MediaWikiIntegrationTestCase {
 		$dbResult += [
 			'insert' => '',
 			'insertId' => '',
-			'select' => '',
+			'select' => [],
 			'selectRow' => ''
 		];
 		$db = $this->createMock( IDatabase::class );
@@ -118,9 +118,17 @@ class EventMapperTest extends MediaWikiIntegrationTestCase {
 		$db->method( 'insertId' )
 			->willReturn( $dbResult['insertId'] );
 		$db->method( 'select' )
-			->willReturn( $dbResult['select'] );
+			->willReturn( new FakeResultWrapper( $dbResult['select'] ) );
 		$db->method( 'selectRow' )
 			->willReturn( $dbResult['selectRow'] );
+		$db->method( 'newInsertQueryBuilder' )
+			->willReturnCallback( static function () use ( $db ) {
+				return new InsertQueryBuilder( $db );
+			} );
+		$db->method( 'newSelectQueryBuilder' )
+			->willReturnCallback( static function () use ( $db ) {
+				return new SelectQueryBuilder( $db );
+			} );
 
 		return $db;
 	}

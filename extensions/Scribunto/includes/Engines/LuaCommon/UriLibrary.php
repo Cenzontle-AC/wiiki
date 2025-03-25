@@ -2,7 +2,7 @@
 
 namespace MediaWiki\Extension\Scribunto\Engines\LuaCommon;
 
-use CoreParserFunctions;
+use MediaWiki\Parser\CoreParserFunctions;
 use MediaWiki\Title\Title;
 
 class UriLibrary extends LibraryBase {
@@ -14,8 +14,9 @@ class UriLibrary extends LibraryBase {
 			'canonicalUrl' => [ $this, 'canonicalUrl' ],
 		];
 
+		$title = $this->getTitle();
 		return $this->getEngine()->registerInterface( 'mw.uri.lua', $lib, [
-			'defaultUrl' => $this->getTitle()->getFullUrl(),
+			'defaultUrl' => $title ? $title->getFullUrl() : null,
 		] );
 	}
 

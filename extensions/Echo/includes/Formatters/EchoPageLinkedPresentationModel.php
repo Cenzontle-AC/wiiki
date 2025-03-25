@@ -5,8 +5,8 @@ namespace MediaWiki\Extension\Notifications\Formatters;
 use MediaWiki\Extension\Notifications\Controller\NotificationController;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
-use SpecialPage;
 
 class EchoPageLinkedPresentationModel extends EchoEventPresentationModel {
 
@@ -128,9 +128,7 @@ class EchoPageLinkedPresentationModel extends EchoEventPresentationModel {
 		$msg->params( $this->getTruncatedTitleText( $this->getPageFrom(), true ) );
 		$count =
 			$this->getNotificationCountForOutput( true, [ $this, 'getLinkedPageId' ] );
-
-		// Repeat is B/C until unused parameter is removed from translations
-		$msg->numParams( $count, $count );
+		$msg->numParams( $count );
 		return $msg;
 	}
 

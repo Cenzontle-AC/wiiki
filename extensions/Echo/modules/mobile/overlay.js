@@ -1,14 +1,16 @@
-var mobile = mw.mobileFrontend.require( 'mobile.startup' ),
+/**
+ * @module module:ext.echo.mobile
+ */
+
+const mobile = require( 'mobile.startup' ),
 	Overlay = mobile.Overlay,
 	list = require( './list.js' ),
 	promisedView = mobile.promisedView,
-	View = mobile.View,
-	Anchor = mobile.Anchor;
+	View = mobile.View;
 
 /**
  * @param {Overlay} overlay
  * @param {Function} exit
- * @return {void}
  */
 function onBeforeExitAnimation( overlay, exit ) {
 	if ( getComputedStyle( overlay.$el[ 0 ] ).transitionDuration !== '0s' ) {
@@ -21,13 +23,6 @@ function onBeforeExitAnimation( overlay, exit ) {
 		exit();
 	}
 }
-
-/**
- * This callback is displayed as a global member.
- *
- * @callback FunctionCountChangeCallback
- * @param {number} count a capped (0-99 or 99+) count
- */
 
 /**
  * @param {number} count a capped (0-99 or 99+) count.
@@ -49,42 +44,40 @@ function onCountChange( count ) {
  * @return {Overlay}
  */
 function notificationsOverlay( onBeforeExit ) {
-	var markAllReadButton, overlay,
-		oouiPromise = mw.loader.using( 'oojs-ui' ).then( function () {
-			markAllReadButton = new OO.ui.ButtonWidget( {
-				icon: 'checkAll'
-			} );
-			return View.make(
-				{ class: 'notifications-overlay-header-markAllRead' },
-				[ markAllReadButton.$element ]
-			);
-		} ),
-		markAllReadButtonView = promisedView( oouiPromise );
+	let markAllReadButton;
+	const oouiPromise = mw.loader.using( 'oojs-ui' ).then( () => {
+		markAllReadButton = new OO.ui.ButtonWidget( {
+			icon: 'checkAll'
+		} );
+		return View.make(
+			{ class: 'notifications-overlay-header-markAllRead' },
+			[ markAllReadButton.$element ]
+		);
+	} );
+	const markAllReadButtonView = promisedView( oouiPromise );
 	// hide the button spinner as it is confusing to see in the top right corner
 	markAllReadButtonView.$el.hide();
 
-	overlay = Overlay.make(
+	const overlay = Overlay.make(
 		{
 			heading: '<strong>' + mw.message( 'notifications' ).escaped() + '</strong>',
-			footerAnchor: new Anchor( {
+			footerAnchor: {
 				href: mw.util.getUrl( 'Special:Notifications' ),
 				progressive: true,
 				additionalClassNames: 'footer-link notifications-archive-link',
 				label: mw.msg( 'echo-overlay-link' )
-			} ).options,
+			},
 			headerActions: [ markAllReadButtonView ],
 			isBorderBox: false,
 			className: 'overlay notifications-overlay navigation-drawer',
 			onBeforeExit: function ( exit ) {
-				onBeforeExit( function () {
+				onBeforeExit( () => {
 					onBeforeExitAnimation( overlay, exit );
 				} );
 			}
 		},
 		promisedView(
-			oouiPromise.then( function () {
-				return list( mw.echo, markAllReadButton, onCountChange );
-			} )
+			oouiPromise.then( () => list( mw.echo, markAllReadButton, onCountChange ) )
 		)
 	);
 	return overlay;

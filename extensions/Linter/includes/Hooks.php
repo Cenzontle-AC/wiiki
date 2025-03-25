@@ -20,25 +20,32 @@
 
 namespace MediaWiki\Linter;
 
-use ApiQuerySiteinfo;
-use Content;
-use IContextSource;
+use JobQueueError;
+use JobQueueGroup;
+use MediaWiki\Api\ApiQuerySiteinfo;
 use MediaWiki\Api\Hook\APIQuerySiteInfoGeneralInfoHook;
-use MediaWiki\Hook\BeforePageDisplayHook;
+use MediaWiki\Config\Config;
+use MediaWiki\Content\Content;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Deferred\DeferrableUpdate;
+use MediaWiki\Deferred\MWCallableUpdate;
 use MediaWiki\Hook\InfoActionHook;
 use MediaWiki\Hook\ParserLogLinterDataHook;
 use MediaWiki\Linker\LinkRenderer;
 use MediaWiki\Logger\LoggerFactory;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Output\Hook\BeforePageDisplayHook;
+use MediaWiki\Output\OutputPage;
 use MediaWiki\Page\Hook\RevisionFromEditCompleteHook;
 use MediaWiki\Page\Hook\WikiPageDeletionUpdatesHook;
+use MediaWiki\Page\ParserOutputAccess;
+use MediaWiki\Page\WikiPageFactory;
+use MediaWiki\Revision\RenderedRevision;
 use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Storage\Hook\RevisionDataUpdatesHook;
 use MediaWiki\Title\Title;
 use MediaWiki\User\UserIdentity;
-use MWCallableUpdate;
-use OutputPage;
 use Skin;
-use SpecialPage;
 use WikiPage;
 
 class Hooks implements
@@ -47,16 +54,45 @@ class Hooks implements
 	InfoActionHook,
 	ParserLogLinterDataHook,
 	RevisionFromEditCompleteHook,
-	WikiPageDeletionUpdatesHook
+	WikiPageDeletionUpdatesHook,
+	RevisionDataUpdatesHook
 {
-	/** @var LinkRenderer */
-	private $linkRenderer;
+	private LinkRenderer $linkRenderer;
+	private JobQueueGroup $jobQueueGroup;
+	private WikiPageFactory $wikiPageFactory;
+	private ParserOutputAccess $parserOutputAccess;
+	private CategoryManager $categoryManager;
+	private TotalsLookup $totalsLookup;
+	private Database $database;
+	private bool $parseOnDerivedDataUpdates;
 
 	/**
 	 * @param LinkRenderer $linkRenderer
+	 * @param JobQueueGroup $jobQueueGroup
+	 * @param WikiPageFactory $wikiPageFactory
+	 * @param ParserOutputAccess $parserOutputAccess
+	 * @param CategoryManager $categoryManager
+	 * @param TotalsLookup $totalsLookup
+	 * @param Database $database
 	 */
-	public function __construct( LinkRenderer $linkRenderer ) {
+	public function __construct(
+		LinkRenderer $linkRenderer,
+		JobQueueGroup $jobQueueGroup,
+		WikiPageFactory $wikiPageFactory,
+		ParserOutputAccess $parserOutputAccess,
+		CategoryManager $categoryManager,
+		TotalsLookup $totalsLookup,
+		Database $database,
+		Config $config
+	) {
 		$this->linkRenderer = $linkRenderer;
+		$this->jobQueueGroup = $jobQueueGroup;
+		$this->wikiPageFactory = $wikiPageFactory;
+		$this->parserOutputAccess = $parserOutputAccess;
+		$this->categoryManager = $categoryManager;
+		$this->totalsLookup = $totalsLookup;
+		$this->database = $database;
+		$this->parseOnDerivedDataUpdates = $config->get( 'LinterParseOnDerivedDataUpdate' );
 	}
 
 	/**
@@ -79,7 +115,7 @@ class Hooks implements
 			return;
 		}
 
-		$lintError = ( new Database( $title->getArticleID() ) )->getFromId( $lintId );
+		$lintError = $this->database->getFromId( $lintId );
 		if ( !$lintError ) {
 			// Already fixed or bogus URL parameter?
 			return;
@@ -102,10 +138,15 @@ class Hooks implements
 	 * @param array &$updates
 	 */
 	public function onWikiPageDeletionUpdates( $wikiPage, $content, &$updates ) {
+		// The article id of the title is set to 0 when the page is deleted so
+		// capture it before creating the callback.
 		$id = $wikiPage->getId();
-		$updates[] = new MWCallableUpdate( static function () use ( $id ) {
-			$database = new Database( $id );
-			$database->updateStats( $database->setForPage( [] ) );
+		$ns = $wikiPage->getNamespace();
+
+		$updates[] = new MWCallableUpdate( function () use ( $id, $ns ) {
+			$this->totalsLookup->updateStats(
+				$this->database->setForPage( $id, $ns, [] )
+			);
 		}, __METHOD__ );
 	}
 
@@ -139,8 +180,11 @@ class Hooks implements
 			( in_array( "mw-contentmodelchange", $tags ) &&
 			!in_array( $wikiPage->getContentModel(), self::LINTABLE_CONTENT_MODELS ) )
 		) {
-			$database = new Database( $wikiPage->getId() );
-			$database->updateStats( $database->setForPage( [] ) );
+			$this->totalsLookup->updateStats(
+				$this->database->setForPage(
+					$wikiPage->getId(), $wikiPage->getNamespace(), []
+				)
+			);
 		}
 	}
 
@@ -153,12 +197,10 @@ class Hooks implements
 	 * @param array &$data
 	 */
 	public function onAPIQuerySiteInfoGeneralInfo( $api, &$data ) {
-		$catManager = new CategoryManager();
 		$data['linter'] = [
-			'high' => $catManager->getHighPriority(),
-			'medium' => $catManager->getMediumPriority(),
-			'low' => $catManager->getLowPriority(),
-			'none' => $catManager->getNonePriority(),
+			'high' => $this->categoryManager->getHighPriority(),
+			'medium' => $this->categoryManager->getMediumPriority(),
+			'low' => $this->categoryManager->getLowPriority(),
 		];
 	}
 
@@ -176,8 +218,7 @@ class Hooks implements
 		if ( !$pageId ) {
 			return;
 		}
-		$database = new Database( $pageId );
-		$totals = array_filter( $database->getTotalsForPage() );
+		$totals = array_filter( $this->database->getTotalsForPage( $pageId ) );
 		if ( !$totals ) {
 			// No errors, yay!
 			return;
@@ -196,7 +237,8 @@ class Hooks implements
 				SpecialPage::getTitleFor( 'LintErrors' ),
 				$context->msg( 'pageinfo-linter-moreinfo' )->text(),
 				[],
-				[ 'namespace' => $title->getNamespace(), 'titlesearch' => $title->getText(), 'exactmatch' => 1 ]
+				[ 'wpNamespaceRestrictions' => $title->getNamespace(),
+					'titlesearch' => $title->getText(), 'exactmatch' => 1 ]
 			),
 		];
 	}
@@ -216,16 +258,21 @@ class Hooks implements
 	): bool {
 		$errors = [];
 		$title = Title::newFromText( $page );
+
 		if (
 			!$title || !$title->getArticleID() ||
 			$title->getLatestRevID() != $revision
 		) {
 			return false;
 		}
-		$categoryMgr = new CategoryManager();
 		$catCounts = [];
 		foreach ( $data as $info ) {
-			if ( $categoryMgr->isKnownCategory( $info['type'] ) ) {
+			if ( $this->categoryManager->isKnownCategory( $info['type'] ) ) {
+				// NOTE: Redundant with RecordLintJob, but why even create the job
+				if ( !$this->categoryManager->isEnabled( $info['type'] ) ) {
+					// Drop lints of these types for now
+					continue;
+				}
 				$info[ 'dbid' ] = null;
 			} elseif ( !isset( $info[ 'dbid' ] ) ) {
 				continue;
@@ -256,11 +303,69 @@ class Hooks implements
 			}
 			$errors[] = $info;
 		}
-		$job = new RecordLintJob( $title, [
-			'errors' => $errors,
-			'revision' => $revision,
-		] );
-		MediaWikiServices::getInstance()->getJobQueueGroup()->push( $job );
+
+		LoggerFactory::getInstance( 'Linter' )->debug(
+			'{method}: Recording {numErrors} errors for {page}',
+			[
+				'method' => __METHOD__,
+				'numErrors' => count( $errors ),
+				'page' => $page
+			]
+		);
+
+		$job = new RecordLintJob(
+			$title,
+			[ 'errors' => $errors, 'revision' => $revision ],
+			$this->totalsLookup,
+			$this->database,
+			$this->categoryManager
+		);
+
+		try {
+			$this->jobQueueGroup->push( $job );
+		} catch ( JobQueueError $e ) {
+			// Since linting is currently tied up with read views,
+			// don't let a failure to enqueue block a parse.
+			LoggerFactory::getInstance( 'Linter' )->debug(
+				'{method}: Failed to inject job: "{msg}"!',
+				[
+					'method' => __METHOD__,
+					'msg' => $e->getMessage(),
+				]
+			);
+		}
+
 		return true;
+	}
+
+	/**
+	 * @param Title $title
+	 * @param RenderedRevision $renderedRevision
+	 * @param DeferrableUpdate[] &$updates
+	 */
+	public function onRevisionDataUpdates( $title, $renderedRevision, &$updates ) {
+		if ( !$this->parseOnDerivedDataUpdates ) {
+			return;
+		}
+
+		if ( $renderedRevision->getOptions()->getUseParsoid() ) {
+			// Parsoid was already used for the canonical parse, nothing to do:
+			// onParserLogLinterData was already called.
+			// This will be the case when parsoid page views are enabled.
+			// Eventually, ParserLogLinterData will probably go away and we'll
+			// have the lint data in the ParserOutput. We'll then just use
+			// that data to create a RecordLintJob.
+			return;
+		}
+
+		if ( !in_array( $title->getContentModel(), self::LINTABLE_CONTENT_MODELS ) ) {
+			return;
+		}
+
+		$updates[] = new LintUpdate(
+			$this->wikiPageFactory,
+			$this->parserOutputAccess,
+			$renderedRevision,
+		);
 	}
 }

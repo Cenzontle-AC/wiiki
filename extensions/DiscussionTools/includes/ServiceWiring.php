@@ -44,12 +44,12 @@ return [
 			$services->getPageStore(),
 			$services->getRevisionStore(),
 			$services->getTitleFormatter(),
-			$services->getActorStore()
+			$services->getActorStore(),
+			$services->getContentLanguage()
 		);
 	},
 	'DiscussionTools.ThreadItemFormatter' => static function ( MediaWikiServices $services ): ThreadItemFormatter {
 		return new ThreadItemFormatter(
-			$services->getTitleFormatter(),
 			$services->getLinkRenderer()
 		);
 	},

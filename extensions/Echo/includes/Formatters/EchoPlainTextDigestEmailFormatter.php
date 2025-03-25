@@ -2,10 +2,10 @@
 
 namespace MediaWiki\Extension\Notifications\Formatters;
 
-use Language;
-use Sanitizer;
-use SpecialPage;
-use User;
+use MediaWiki\Language\Language;
+use MediaWiki\Parser\Sanitizer;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\User\User;
 
 class EchoPlainTextDigestEmailFormatter extends EchoEventDigestFormatter {
 

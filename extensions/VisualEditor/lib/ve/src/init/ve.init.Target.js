@@ -1,7 +1,7 @@
 /*!
  * VisualEditor Initialization Target class.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 /**
@@ -10,16 +10,16 @@
  * @class
  * @abstract
  * @extends OO.ui.Element
- * @mixins OO.EventEmitter
+ * @mixes OO.EventEmitter
  *
  * @constructor
  * @param {Object} [config] Configuration options
- * @cfg {Object} [toolbarConfig={}] Configuration options for the toolbar
- * @cfg {Object} [toolbarGroups] Toolbar groups, defaults to this.constructor.static.toolbarGroups
- * @cfg {Object} [actionGroups] Toolbar groups, defaults to this.constructor.static.actionGroups
- * @cfg {string[]} [modes] Available editing modes. Defaults to static.modes
- * @cfg {string} [defaultMode] Default mode for new surfaces. Must be in this.modes and defaults to first item.
- * @cfg {boolean} [register=true] Register the target at ve.init.target
+ * @param {Object} [config.toolbarConfig={}] Configuration options for the toolbar
+ * @param {Object} [config.toolbarGroups] Toolbar groups, defaults to this.constructor.static.toolbarGroups
+ * @param {Object} [config.actionGroups] Toolbar groups, defaults to this.constructor.static.actionGroups
+ * @param {string[]} [config.modes] Available editing modes. Defaults to static.modes
+ * @param {string} [config.defaultMode] Default mode for new surfaces. Must be in this.modes and defaults to first item.
+ * @param {boolean} [register=true] Register the target at ve.init.target
  */
 ve.init.Target = function VeInitTarget( config ) {
 	config = config || {};
@@ -82,9 +82,9 @@ OO.mixinClass( ve.init.Target, OO.EventEmitter );
 /* Events */
 
 /**
- * @event surfaceReady
- *
  * Must be fired after the surface is initialized
+ *
+ * @event ve.init.Target#surfaceReady
  */
 
 /* Static Properties */
@@ -123,8 +123,6 @@ ve.init.Target.static.toolbarGroups = [
 	},
 	{
 		name: 'style',
-		header: OO.ui.deferMsg( 'visualeditor-toolbar-text-style' ),
-		title: OO.ui.deferMsg( 'visualeditor-toolbar-style-tooltip' ),
 		include: [ 'bold', 'italic', 'moreTextStyle' ]
 	},
 	{
@@ -162,11 +160,15 @@ ve.init.Target.static.toolbarGroups = [
 		align: 'after',
 		icon: 'menu',
 		indicator: null,
+		header: OO.ui.deferMsg( 'visualeditor-pagemenu-tooltip' ),
 		title: OO.ui.deferMsg( 'visualeditor-pagemenu-tooltip' ),
 		label: OO.ui.deferMsg( 'visualeditor-pagemenu-tooltip' ),
 		invisibleLabel: true,
 		include: [ { group: 'utility' }, { group: 'help' } ]
 	}
+	// ve-mw puts help in a separate group and so uses the
+	// visualeditor-help-tool message.
+	// TODO: Consider downstreaming this message.
 ];
 
 /**
@@ -182,14 +184,14 @@ ve.init.Target.static.actionGroups = [];
 /**
  * List of commands which can be triggered anywhere from within the document
  *
- * @type {string[]} List of command names
+ * @type {string[]}
  */
 ve.init.Target.static.documentCommands = [];
 
 /**
  * List of commands which can be triggered from within the target element
  *
- * @type {string[]} List of command names
+ * @type {string[]}
  */
 ve.init.Target.static.targetCommands = [ 'commandHelp', 'findAndReplace', 'findNext', 'findPrevious' ];
 
@@ -198,14 +200,14 @@ ve.init.Target.static.targetCommands = [ 'commandHelp', 'findAndReplace', 'findN
  *
  * Null means all commands in the registry are used (excluding excludeCommands)
  *
- * @type {string[]|null} List of command names
+ * @type {string[]|null}
  */
 ve.init.Target.static.includeCommands = null;
 
 /**
  * List of commands to exclude from the target entirely
  *
- * @type {string[]} List of command names
+ * @type {string[]}
  */
 ve.init.Target.static.excludeCommands = [];
 
@@ -223,6 +225,8 @@ ve.init.Target.static.importRules = {
 	external: {
 		blacklist: {
 			// Annotations
+			// TODO: This also removes harmless things like <span style="font-weight: bold;">
+			// which would otherwise get converted to a bold annotation
 			'textStyle/span': true,
 			'textStyle/font': true,
 			// Nodes
@@ -241,7 +245,11 @@ ve.init.Target.static.importRules = {
 				// Unsupported sectioning tags
 				main: true,
 				nav: true,
-				aside: true
+				aside: true,
+				// HTML headings are already bold by default. Some skins may use non-bold
+				// heaidngs, but more likely we will end up with useless bold annotations.
+				'h1 b, h2 b, h3 b, h4 b, h5 b, h6 b': true,
+				'h1 strong, h2 strong, h3 strong, h4 strong, h5 strong, h6 strong': true
 			}
 		},
 		nodeSanitization: true
@@ -348,7 +356,7 @@ ve.init.Target.prototype.bindHandlers = function () {
 		visibilitychange: this.onDocumentVisibilityChangeHandler
 	} );
 	this.$element.on( 'keydown', this.onTargetKeyDownHandler );
-	ve.addPassiveEventListener( this.$scrollListener[ 0 ], 'scroll', this.onContainerScrollHandler );
+	this.$scrollListener[ 0 ].addEventListener( 'scroll', this.onContainerScrollHandler, { passive: true } );
 };
 
 /**
@@ -361,7 +369,7 @@ ve.init.Target.prototype.unbindHandlers = function () {
 		visibilitychange: this.onDocumentVisibilityChangeHandler
 	} );
 	this.$element.off( 'keydown', this.onTargetKeyDownHandler );
-	ve.removePassiveEventListener( this.$scrollListener[ 0 ], 'scroll', this.onContainerScrollHandler );
+	this.$scrollListener[ 0 ].removeEventListener( 'scroll', this.onContainerScrollHandler );
 };
 
 /**
@@ -385,10 +393,9 @@ ve.init.Target.prototype.teardown = function () {
  * @return {jQuery.Promise} Promise which resolves when the target has been destroyed
  */
 ve.init.Target.prototype.destroy = function () {
-	var target = this;
-	return this.teardown().then( function () {
-		target.$element.remove();
-		if ( ve.init.target === target ) {
+	return this.teardown().then( () => {
+		this.$element.remove();
+		if ( ve.init.target === this ) {
 			ve.init.target = null;
 		}
 	} );
@@ -398,7 +405,7 @@ ve.init.Target.prototype.destroy = function () {
  * Set up trigger listeners
  */
 ve.init.Target.prototype.setupTriggerListeners = function () {
-	var surfaceOrSurfaceConfig = this.getSurface() || this.getSurfaceConfig();
+	const surfaceOrSurfaceConfig = this.getSurface() || this.getSurfaceConfig();
 	this.documentTriggerListener = new ve.TriggerListener( this.constructor.static.documentCommands, surfaceOrSurfaceConfig.commandRegistry );
 	this.targetTriggerListener = new ve.TriggerListener( this.constructor.static.targetCommands, surfaceOrSurfaceConfig.commandRegistry );
 };
@@ -417,11 +424,11 @@ ve.init.Target.prototype.getScrollContainer = function () {
  */
 ve.init.Target.prototype.onContainerScroll = function () {
 	// Don't use getter as it creates the toolbar
-	var toolbar = this.toolbar;
+	const toolbar = this.toolbar;
 
 	if ( toolbar && toolbar.isFloatable() ) {
-		var wasFloating = toolbar.isFloating();
-		var scrollTop = this.$scrollContainer.scrollTop();
+		const wasFloating = toolbar.isFloating();
+		const scrollTop = this.$scrollContainer.scrollTop();
 
 		if ( scrollTop + this.toolbarScrollOffset > toolbar.getElementOffset().top ) {
 			toolbar.float();
@@ -432,7 +439,7 @@ ve.init.Target.prototype.onContainerScroll = function () {
 		if ( toolbar.isFloating() !== wasFloating ) {
 			// HACK: Re-position any active toolgroup popups. We can't rely on normal event handler order
 			// because we're mixing jQuery and non-jQuery events. T205924#4657203
-			toolbar.getItems().forEach( function ( toolgroup ) {
+			toolbar.getItems().forEach( ( toolgroup ) => {
 				if ( toolgroup instanceof OO.ui.PopupToolGroup && toolgroup.isActive() ) {
 					toolgroup.position();
 				}
@@ -447,10 +454,10 @@ ve.init.Target.prototype.onContainerScroll = function () {
  * @param {jQuery.Event} e Key down event
  */
 ve.init.Target.prototype.onDocumentKeyDown = function ( e ) {
-	var trigger = new ve.ui.Trigger( e );
+	const trigger = new ve.ui.Trigger( e );
 	if ( trigger.isComplete() ) {
-		var command = this.documentTriggerListener.getCommandByTrigger( trigger.toString() );
-		var surface = this.getSurface();
+		const command = this.documentTriggerListener.getCommandByTrigger( trigger.toString() );
+		const surface = this.getSurface();
 		if ( surface && command && command.execute( surface, undefined, 'trigger' ) ) {
 			e.preventDefault();
 		}
@@ -484,10 +491,10 @@ ve.init.Target.prototype.onDocumentVisibilityChange = function () {
  * @param {jQuery.Event} e Key down event
  */
 ve.init.Target.prototype.onTargetKeyDown = function ( e ) {
-	var trigger = new ve.ui.Trigger( e );
+	const trigger = new ve.ui.Trigger( e );
 	if ( trigger.isComplete() ) {
-		var command = this.targetTriggerListener.getCommandByTrigger( trigger.toString() );
-		var surface = this.getSurface();
+		const command = this.targetTriggerListener.getCommandByTrigger( trigger.toString() );
+		const surface = this.getSurface();
 		if ( surface && command && command.execute( surface, undefined, 'trigger' ) ) {
 			e.preventDefault();
 		}
@@ -560,7 +567,7 @@ ve.init.Target.prototype.getSurfaceConfig = function ( config ) {
  * @return {ve.ui.Surface}
  */
 ve.init.Target.prototype.addSurface = function ( dmDocOrSurface, config ) {
-	var surface = this.createSurface( dmDocOrSurface, ve.extendObject( { mode: this.getDefaultMode() }, config ) );
+	const surface = this.createSurface( dmDocOrSurface, ve.extendObject( { mode: this.getDefaultMode() }, config ) );
 	this.surfaces.push( surface );
 	surface.getView().connect( this, {
 		focus: this.onSurfaceViewFocus.bind( this, surface )
@@ -659,7 +666,7 @@ ve.init.Target.prototype.getActions = function () {
  * @param {ve.ui.Surface} surface
  */
 ve.init.Target.prototype.setupToolbar = function ( surface ) {
-	var toolbar = this.getToolbar();
+	const toolbar = this.getToolbar();
 	if ( this.actionGroups.length ) {
 		// Backwards-compatibility
 		if ( !this.actionsToolbar ) {
@@ -674,19 +681,19 @@ ve.init.Target.prototype.setupToolbar = function ( surface ) {
 
 	if ( surface.nullSelectionOnBlur ) {
 		toolbar.$element
-			.on( 'focusin', function () {
+			.on( 'focusin', () => {
 				// When the focus moves to the toolbar, deactivate the surface but keep the selection (even if
 				// nullSelectionOnBlur is true), to allow tools to act on that selection.
 				surface.getView().deactivate( /* showAsActivated= */ true );
 			} )
-			.on( 'focusout', function ( e ) {
-				var newFocusedElement = e.relatedTarget;
+			.on( 'focusout', ( e ) => {
+				const newFocusedElement = e.relatedTarget;
 				if ( !OO.ui.contains( [ toolbar.$element[ 0 ], toolbar.$overlay[ 0 ] ], newFocusedElement, true ) ) {
 					// When the focus moves out of the toolbar:
 					if ( OO.ui.contains( surface.getView().$element[ 0 ], newFocusedElement, true ) ) {
 						// When the focus moves out of the toolbar, and it moves back into the surface,
 						// make sure the previous selection is restored.
-						var previousSelection = surface.getModel().getSelection();
+						const previousSelection = surface.getModel().getSelection();
 						surface.getView().activate();
 						if ( !previousSelection.isNull() ) {
 							surface.getModel().setSelection( previousSelection );
@@ -701,15 +708,14 @@ ve.init.Target.prototype.setupToolbar = function ( surface ) {
 			} );
 	}
 
-	this.actionGroups.forEach( function ( group ) {
+	this.actionGroups.forEach( ( group ) => {
 		group.align = 'after';
 	} );
-	var groups = [].concat( this.toolbarGroups, this.actionGroups );
+	const groups = [ ...this.toolbarGroups, ...this.actionGroups ];
 
 	toolbar.setup( groups, surface );
 	this.attachToolbar();
-	var rAF = window.requestAnimationFrame || setTimeout;
-	rAF( this.onContainerScrollHandler );
+	requestAnimationFrame( this.onContainerScrollHandler );
 };
 
 /**
@@ -718,7 +724,7 @@ ve.init.Target.prototype.setupToolbar = function ( surface ) {
  * @protected
  */
 ve.init.Target.prototype.deactivateSurfaceForToolbar = function () {
-	var view = this.getSurface().getView();
+	const view = this.getSurface().getView();
 	// Surface may already be deactivated (e.g. link inspector is open)
 	this.wasSurfaceActive = !view.deactivated;
 	if ( this.wasSurfaceActive ) {
@@ -732,7 +738,7 @@ ve.init.Target.prototype.deactivateSurfaceForToolbar = function () {
  * @protected
  */
 ve.init.Target.prototype.activateSurfaceForToolbar = function () {
-	var view = this.getSurface().getView();
+	const view = this.getSurface().getView();
 	// For non-collapsed mobile selections, don't reactivate
 	if ( this.wasSurfaceActive && !( OO.ui.isMobile() && !view.getModel().getSelection().isCollapsed() ) ) {
 		view.activate();
@@ -779,7 +785,7 @@ ve.init.Target.prototype.teardownToolbar = function () {
  * Attach the toolbar to the DOM
  */
 ve.init.Target.prototype.attachToolbar = function () {
-	var toolbar = this.getToolbar();
+	const toolbar = this.getToolbar();
 	toolbar.$element.insertBefore( toolbar.getSurface().$element );
 	toolbar.initialize();
 };

@@ -23,8 +23,11 @@
  * @ingroup Maintenance
  */
 
-use MediaWiki\Extension\OATHAuth\Hook\UpdateTables;
-use MediaWiki\Extension\OATHAuth\OATHAuthServices;
+namespace MediaWiki\Extension\OATHAuth\Maintenance;
+
+use MediaWiki\Json\FormatJson;
+use MediaWiki\Maintenance\LoggedUpdateMaintenance;
+use MediaWiki\MediaWikiServices;
 
 if ( getenv( 'MW_INSTALL_PATH' ) ) {
 	$IP = getenv( 'MW_INSTALL_PATH' );
@@ -33,22 +36,61 @@ if ( getenv( 'MW_INSTALL_PATH' ) ) {
 }
 require_once "$IP/maintenance/Maintenance.php";
 
-class UpdateTOTPScratchTokensToArray extends Maintenance {
+/**
+ * Merged December 2020; part of REL1_36
+ */
+class UpdateTOTPScratchTokensToArray extends LoggedUpdateMaintenance {
 	public function __construct() {
 		parent::__construct();
 		$this->addDescription( 'Script to update TOTP Recovery Codes to an array' );
 		$this->requireExtension( 'OATHAuth' );
 	}
 
-	public function execute() {
-		$database = OATHAuthServices::getInstance()->getDatabase();
-		$dbw = $database->getDB( DB_PRIMARY );
+	protected function doDBUpdates() {
+		$dbw = MediaWikiServices::getInstance()
+			->getDBLoadBalancerFactory()
+			->getPrimaryDatabase( 'virtual-oathauth' );
 
-		// @phan-suppress-next-line PhanTypeMismatchArgumentSuperType
-		if ( !UpdateTables::switchTOTPScratchTokensToArray( $dbw ) ) {
-			$this->fatalError( "Failed to update TOTP Scratch Tokens.\n" );
+		$res = $dbw->newSelectQueryBuilder()
+			->select( [ 'id', 'data' ] )
+			->from( 'oathauth_users' )
+			->where( [ 'module' => 'totp' ] )
+			->caller( __METHOD__ )
+			->fetchResultSet();
+
+		foreach ( $res as $row ) {
+			$data = FormatJson::decode( $row->data, true );
+
+			$updated = false;
+			foreach ( $data['keys'] as &$k ) {
+				if ( is_string( $k['scratch_tokens'] ) ) {
+					$k['scratch_tokens'] = explode( ',', $k['scratch_tokens'] );
+					$updated = true;
+				}
+			}
+			unset( $k );
+
+			if ( !$updated ) {
+				continue;
+			}
+
+			$dbw->newUpdateQueryBuilder()
+				->update( 'oathauth_users' )
+				->set( [ 'data' => FormatJson::encode( $data ) ] )
+				->where( [ 'id' => $row->id ] )
+				->caller( __METHOD__ )
+				->execute();
 		}
+
 		$this->output( "Done.\n" );
+		return true;
+	}
+
+	/**
+	 * @return string
+	 */
+	protected function getUpdateKey() {
+		return __CLASS__;
 	}
 }
 

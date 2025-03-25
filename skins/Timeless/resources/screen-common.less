@@ -66,28 +66,26 @@ body {
 }
 
 #p-logo-text {
+	padding-right: 1em;
+	box-sizing: border-box;
 	max-width: @column-left-size;
 	text-align: center;
 	line-height: 1;
 
 	a {
-		padding: 0.1em 1em 0.2em;
+		display: flex;
+		height: 100%;
+		align-items: center;
+		justify-content: center;
 		color: @text;
 		font-family: @fonts-secondary;
 		font-variant: small-caps;
 		font-size: 1.85em;
-		display: block;
 
 		/* 13+ character names */
 		&.long {
 			font-size: 1.5em;
-			padding: 0 0.75em 0 0;
 			line-height: 0.8;
-		}
-
-		/* images */
-		&.wordmark {
-			padding: 0 0.5em 0 0;
 		}
 	}
 }
@@ -509,6 +507,7 @@ pre,
 }
 
 .mw-body {
+	.mw-heading,
 	h1,
 	h2,
 	h3,
@@ -545,17 +544,21 @@ pre,
 		display: block;
 	}
 
+	.mw-heading1,
 	h1 {
 		font-size: 2em;
 		border-bottom: solid 3px @base70;
 	}
 
+	.mw-heading2,
 	h2 {
 		font-size: 1.8em;
 		border-bottom: solid 2px @base70;
 	}
 
+	.mw-heading1,
 	h1,
+	.mw-heading2,
 	h2 {
 		// Introduce a "block formatting context" so that the border-bottom underline doesn't overlap
 		// thumbnails, infoboxes and other floated content.
@@ -570,20 +573,39 @@ pre,
 		display: flow-root;
 	}
 
+	.mw-heading3,
 	h3 {
 		font-size: 1.6em;
 	}
 
+	.mw-heading4,
 	h4 {
 		font-size: 1.4em;
 	}
 
+	.mw-heading5,
 	h5 {
 		font-size: 1.25em;
 	}
 
+	.mw-heading6,
 	h6 {
 		font-size: 1.2em;
+	}
+
+	// Override the styles above for `hN` nested inside `.mw-heading`, as used on wikitext pages.
+	.mw-heading {
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6 {
+			font-size: inherit;
+			border-bottom: 0;
+			// Must be inline to allow `.mw-editsection` to be shown on the same line
+			display: inline;
+		}
 	}
 
 	dt {
@@ -646,10 +668,6 @@ p {
 ul {
 	padding: 0;
 	margin: 0.3em 0 0 1.6em;
-}
-
-/* body */ .mw-hide-empty-elt .mw-parser-output:not( .mw-show-empty-elt ) .mw-empty-elt {
-	display: none;
 }
 
 .center {
@@ -792,6 +810,7 @@ body :not( :checked ) > .toctogglespan::after {
 .mw-datatable {
 	color: @text;
 	.box;
+	padding: 1.25em 1.75em;
 }
 
 .mw-body .mw-search-profile-tabs {

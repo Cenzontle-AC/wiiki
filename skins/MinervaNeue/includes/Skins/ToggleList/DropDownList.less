@@ -1,4 +1,4 @@
-// A DropDownList is a ToggleList that extends downward.
+// A DropdownList is a ToggleList that extends downward.
 
 .toggle-list__list--drop-down {
 	background: @background-color-base;
@@ -7,8 +7,9 @@
 	// If max-height is set and the height exceeds it, add a vertical scrollbar.
 	overflow-y: auto;
 	// The menu floats over content but below overlays.
-	z-index: @z-indexDrawer;
-	box-shadow: 0 5px 17px 0 rgba( 0, 0, 0, 0.24 ), 0 0 1px #a2a9b1;
+	z-index: @z-index-drawer;
+	// Two box-shadows: first creates a drop-shadow, second acts as a subtle border.
+	box-shadow: 0 5px 17px 0 rgba( 0, 0, 0, 0.24 ), 0 0 1px @border-color-base;
 	visibility: hidden;
 	opacity: 0;
 	transform: translateY( -8px );
@@ -20,11 +21,11 @@
 	.toggle-list-item:hover {
 		// Make the app feel like an app, not a JPEG. When hovering over a menu item, add a little
 		// interactivity.
-		background: @background-color-light;
+		background: @background-color-interactive;
 	}
 }
 
-// Without the minerva-animations-ready class, DropDownList can appear and
+// Without the minerva-animations-ready class, DropdownList can appear and
 // perform its exit animation when the page loads in chrome (and possibly
 // others).
 // https://bugs.chromium.org/p/chromium/issues/detail?id=332189

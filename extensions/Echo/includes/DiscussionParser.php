@@ -3,21 +3,22 @@
 namespace MediaWiki\Extension\Notifications;
 
 use Article;
-use Language;
+use MediaWiki\Content\TextContent;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\Notifications\Hooks\HookRunner;
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Language\Language;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Parser\Sanitizer;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\SlotRecord;
 use MediaWiki\Title\Title;
+use MediaWiki\User\User;
 use MediaWiki\User\UserNameUtils;
-use ParserOptions;
-use ParserOutput;
-use RequestContext;
 use RuntimeException;
-use Sanitizer;
-use TextContent;
-use User;
+use Wikimedia\Rdbms\IDBAccessObject;
 
 abstract class DiscussionParser {
 	private const HEADER_REGEX = '^(==+)\h*([^=].*)\h*\1$';
@@ -35,7 +36,7 @@ abstract class DiscussionParser {
 	protected static $revisionInterpretationCache = [];
 
 	/** @var DiffParser|null */
-	protected static $diffParser;
+	protected static $diffParser = null;
 
 	/**
 	 * Given a RevisionRecord object, generates Event objects for
@@ -55,7 +56,7 @@ abstract class DiscussionParser {
 			$title = Title::newFromID( $revision->getPageId() );
 			// use the primary database for new page
 		} else {
-			$title = Title::newFromID( $revision->getPageId(), Title::GAID_FOR_UPDATE );
+			$title = Title::newFromID( $revision->getPageId(), IDBAccessObject::READ_LATEST );
 		}
 
 		// not a valid title
@@ -212,7 +213,7 @@ abstract class DiscussionParser {
 	 * @param Title|null $title
 	 * @return string[] Array containing section title and text
 	 */
-	public static function detectSectionTitleAndText( array $interpretation, Title $title = null ) {
+	public static function detectSectionTitleAndText( array $interpretation, ?Title $title = null ) {
 		$header = $snippet = '';
 		$found = false;
 
@@ -613,7 +614,7 @@ abstract class DiscussionParser {
 	 *    but it contains multiple signatures.
 	 * - unknown: Unrecognised change type.
 	 */
-	public static function interpretDiff( array $changes, $username, Title $title = null ) {
+	public static function interpretDiff( array $changes, $username, ?Title $title = null ) {
 		// One extra item in $changes for _info
 		$actions = [];
 		$signedSections = [];
@@ -662,7 +663,7 @@ abstract class DiscussionParser {
 							$sectionSpan = self::getSectionSpan( $nextSectionStart, $changes['_info']['rhs'] );
 							$nextSectionStart = $sectionSpan[1] + 1;
 							$sectionSignedUsers = self::extractSignatures( $section['content'], $title );
-							if ( !empty( $sectionSignedUsers ) ) {
+							if ( $sectionSignedUsers ) {
 								$signedSections[] = $sectionSpan;
 								if ( !$section['header'] ) {
 									$fullSection = self::getFullSection(
@@ -725,7 +726,7 @@ abstract class DiscussionParser {
 			}
 		}
 
-		if ( !empty( $signedSections ) ) {
+		if ( $signedSections ) {
 			$actions = self::convertToUnknownSignedChanges( $signedSections, $actions );
 		}
 
@@ -922,7 +923,7 @@ abstract class DiscussionParser {
 	 * @param Title|null $title
 	 * @return string
 	 */
-	private static function stripSignature( $text, Title $title = null ) {
+	private static function stripSignature( $text, ?Title $title = null ) {
 		$output = self::getUserFromLine( $text, $title );
 		if ( $output === false ) {
 			$timestampPos = self::getTimestampPosition( $text );
@@ -957,7 +958,7 @@ abstract class DiscussionParser {
 	 * @param Title|null $title
 	 * @return bool
 	 */
-	public static function isSignedComment( $text, $user = false, Title $title = null ) {
+	public static function isSignedComment( $text, $user = false, ?Title $title = null ) {
 		$userData = self::getUserFromLine( $text, $title );
 
 		if ( $userData === false ) {
@@ -1011,7 +1012,7 @@ abstract class DiscussionParser {
 	 * * 'left_pos' and 'right_pos' (in lines) of the change.
 	 */
 	public static function getMachineReadableDiff( $oldText, $newText ) {
-		if ( !isset( self::$diffParser ) ) {
+		if ( self::$diffParser === null ) {
 			self::$diffParser = new DiffParser;
 		}
 
@@ -1026,7 +1027,7 @@ abstract class DiscussionParser {
 	 * @return array<string,string> Associative array, the key is the username, the value
 	 *  is the last signature that was found.
 	 */
-	private static function extractSignatures( $text, Title $title = null ) {
+	private static function extractSignatures( $text, ?Title $title = null ) {
 		$lines = explode( "\n", $text );
 
 		$output = [];
@@ -1087,8 +1088,9 @@ abstract class DiscussionParser {
 
 			// figure out if the link is related to a user
 			if (
-				$title &&
-				( $title->getNamespace() === NS_USER || $title->getNamespace() === NS_USER_TALK )
+				$title
+				&& ( $title->getNamespace() === NS_USER || $title->getNamespace() === NS_USER_TALK )
+				&& !$title->isSubpage()
 			) {
 				$usernames[] = $title->getText();
 			} elseif ( $title && $title->isSpecial( 'Contributions' ) ) {
@@ -1113,7 +1115,7 @@ abstract class DiscussionParser {
 	 * - First element is the position of the signature.
 	 * - Second element is the normalised user name.
 	 */
-	public static function getUserFromLine( $line, Title $title = null ) {
+	public static function getUserFromLine( $line, ?Title $title = null ) {
 		$parser = MediaWikiServices::getInstance()->getParser();
 
 		/*

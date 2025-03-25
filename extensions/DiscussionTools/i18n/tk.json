@@ -11,7 +11,7 @@
 	"discussiontools-newtopicssubscription-button-unsubscribe-tooltip": "Bu sahypada täze mowzuklar açylanda habarnamalary almakdan ýüz öwüriň.",
 	"discussiontools-newtopicssubscription-notify-unsubscribed-body": "Bu sahypada täze mowzuklar açylanda size habar berilmez.",
 	"discussiontools-notification-added-topic-view": "Mowzugy gör",
-	"discussiontools-replylink": "jogap ber",
+	"discussiontools-replylink": "{{GENDER:|jogap ber}}",
 	"discussiontools-replywidget-advanced": "Giňeldilen",
 	"discussiontools-replywidget-cancel": "Goýbolsun et",
 	"discussiontools-replywidget-mode-source": "Çeşme",
@@ -36,6 +36,5 @@
 	"discussiontools-topicsubscription-pager-created": "Ilki bilen abuna ýazyldy",
 	"discussiontools-topicsubscription-pager-newtopics-label": "Täze mowzuklar",
 	"discussiontools-topicsubscription-pager-notified": "Iň soňky bildiriş",
-	"discussiontools-topicsubscription-pager-notified-never": "hiç haçan",
-	"minerva-talk-full-page": "Wiki sahypasy hökmünde okaň"
+	"discussiontools-topicsubscription-pager-notified-never": "hiç haçan"
 }

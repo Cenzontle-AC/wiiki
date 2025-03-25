@@ -15,6 +15,7 @@
 			"Sujiniku",
 			"Tmv",
 			"Translatealcd",
+			"Waki285",
 			"Yamagata Yusuke",
 			"Yusuke1109"
 		]
@@ -80,7 +81,6 @@
 	"templatedata-modal-button-map": "マップを編集",
 	"templatedata-modal-button-importParams": "パラメーターを取り込む",
 	"templatedata-modal-button-removemap": "マップを除去",
-	"templatedata-modal-button-restoreparam": "パラメーターを復元",
 	"templatedata-modal-button-saveparam": "保存",
 	"templatedata-modal-confirmcancel": "すべての変更を破棄してもよろしいですか？",
 	"templatedata-modal-current-language": "現在の言語: $1",
@@ -102,6 +102,7 @@
 	"templatedata-modal-table-param-aliases": "別名",
 	"templatedata-modal-table-param-autovalue": "自動入力値",
 	"templatedata-modal-table-param-default": "既定 ($1)",
+	"templatedata-modal-table-param-status": "状態",
 	"templatedata-modal-table-param-deprecated": "非推奨",
 	"templatedata-modal-table-param-deprecatedValue": "非推奨のガイダンス",
 	"templatedata-modal-table-param-description": "説明 ($1)",

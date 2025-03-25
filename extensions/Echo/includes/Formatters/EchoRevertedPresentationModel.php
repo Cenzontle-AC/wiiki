@@ -16,6 +16,7 @@ class EchoRevertedPresentationModel extends EchoEventPresentationModel {
 	}
 
 	public function getHeaderMessage() {
+		// Messages: notification-header-reverted
 		$msg = parent::getHeaderMessage();
 		$msg->params( $this->getTruncatedTitleText( $this->event->getTitle(), true ) );
 		$msg->params( $this->getNumberOfEdits() );
@@ -36,7 +37,14 @@ class EchoRevertedPresentationModel extends EchoEventPresentationModel {
 		}
 	}
 
+	/**
+	 * @param string|null $wikitext
+	 * @return string
+	 */
 	private function formatSummary( $wikitext ) {
+		if ( $wikitext === null || $wikitext === '' ) {
+			return '';
+		}
 		return DiscussionParser::getTextSnippetFromSummary( $wikitext, $this->language );
 	}
 
@@ -78,7 +86,14 @@ class EchoRevertedPresentationModel extends EchoEventPresentationModel {
 		}
 	}
 
+	/**
+	 * @param string|null $summary
+	 * @return bool
+	 */
 	private function isAutomaticSummary( $summary ) {
+		if ( $summary === null || $summary === '' ) {
+			return false;
+		}
 		$autoSummaryMsg = $this->msg( 'undo-summary' )->inContentLanguage();
 		$autoSummaryMsg->params( $this->event->getExtraParam( 'reverted-revision-id' ) );
 		$autoSummaryMsg->params( $this->getViewingUserForGender() );

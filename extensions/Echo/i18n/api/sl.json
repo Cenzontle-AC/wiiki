@@ -5,6 +5,14 @@
 			"Janezdrilc"
 		]
 	},
+	"apihelp-echocreateevent-summary": "Ročna sprožitev obvestila uporabnika",
+	"apihelp-echocreateevent-example": "Pošlji obvestilo",
+	"apihelp-echocreateevent-param-user": "Uporabnik, ki mu želite poslati obvestilo",
+	"apihelp-echocreateevent-param-header": "Vsebina glave obvestila",
+	"apihelp-echocreateevent-param-content": "Vsebina telesa obvestila",
+	"apihelp-echocreateevent-param-page": "Stran za povezavo v obvestilu",
+	"apihelp-echocreateevent-param-section": "Razdelek, v katerega naj se pošlje obvestilo",
+	"apihelp-echocreateevent-param-email": "Ali naj se pošlje tudi e-pošta",
 	"apihelp-echomarkread-summary": "Označi obvestila kot prebrana za trenutnega uporabnika.",
 	"apihelp-echomarkread-param-list": "Seznam ID-jev obvestil za označitev kot prebranih.",
 	"apihelp-echomarkread-param-unreadlist": "Seznam ID-jev obvestil, ki bodo označena kot neprebrana.",
@@ -19,7 +27,7 @@
 	"apihelp-echomarkseen-param-type": "Vrste obvestil za označitev za ogledano: 'opomnik', 'sporočilo' ali 'vse'.",
 	"apihelp-echomarkseen-param-timestampFormat": "Datumski odtis pri izpisovanju, 'ISO_8601' ali 'MW'. 'MW' se ne priporoča, zato ga naj uporabniki zamenjajo z 'ISO_8601'. Ko bo ukinjen, bo ostal v uporabi le 'ISO_8601'.",
 	"apihelp-echomute-summary": "Izklop ali vklop obvestil določenih uporabnikov ali strani",
-	"apihelp-echomute-param-type": "Na kateri seznam utišanih naj se doda ali odstrani",
+	"apihelp-echomute-param-type": "Na kateri seznam utišanih naj se doda ali z njega odstrani",
 	"apihelp-echomute-param-mute": "Strani ali uporabniki, ki naj se dodajo na seznam utišanih",
 	"apihelp-echomute-param-unmute": "Strani ali uporabniki za odstranitev s spiska utišanih.",
 	"apihelp-echopushsubscriptions-summary": "Upravljanje potisnih naročil za trenutnega uporabnika.",

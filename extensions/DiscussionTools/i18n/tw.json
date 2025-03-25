@@ -2,7 +2,6 @@
 	"@metadata": {
 		"authors": [
 			"AC Krah",
-			"Amire80",
 			"Amoarich",
 			"Lee Gyamfi",
 			"Merlin266",
@@ -34,7 +33,7 @@
 	"discussiontools-newtopic-placeholder-title": "Atifi asɛm",
 	"discussiontools-preference-autotopicsub-help": "Sɛ wohyɛ nkɔmɔdi foforɔ ase anaa sɛ woka biribi fa nkɔmɔdi bi a ɛwɔ hɔ dada ho a, sɛ afoforɔ ka nsɛm foforɔ fa ho a wɔ aberɛ a w'ani nna woho so no wobɛnya nkaebɔ",
 	"discussiontools-preference-label": "Nkitahodeɛ mfidie",
-	"discussiontools-replylink": "mmuaeɛ",
+	"discussiontools-replylink": "{{GENDER:|mmuaeɛ}}",
 	"discussiontools-replywidget-abandontopic-keep": "Toa so twerɛ",
 	"discussiontools-replywidget-advanced": "Nea ɛwɔ n'anim",
 	"discussiontools-replywidget-cancel": "Twa mu",
@@ -73,7 +72,6 @@
 	"discussiontools-topicsubscription-special-title": "Nyinasosɛm a wo nsa hy3 aseɛ",
 	"echo-category-title-dt-subscription": "Nkɔmmɔdi bea",
 	"echo-pref-tooltip-dt-subscription": "Bɔ me kɔkɔ sɛ obi twerɛ mmuae foforɔ wɔ nyinasosɛm bi a wo nsa hyɛ aseɛ",
-	"minerva-talk-full-page": "kenkan no sɛ wiki kratafa",
 	"tag-discussiontools-added-comment-description": "Nkɔmmɔdi bea mmuae abɛka saa nsesae yi mu",
 	"tag-discussiontools-description": "Wɔ de nkɔmmɔdie akade na yɛɛ nsakyerae",
 	"tag-discussiontools-edit": "Mmuae a yɛ asakyera",

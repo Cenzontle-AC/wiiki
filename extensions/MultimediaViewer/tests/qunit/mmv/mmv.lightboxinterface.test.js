@@ -2,7 +2,7 @@ const { LightboxInterface } = require( 'mmv' );
 const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 
 ( function () {
-	var oldScrollTo;
+	let oldScrollTo;
 
 	function stubScrollTo() {
 		oldScrollTo = $.scrollTo;
@@ -22,13 +22,13 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 		}
 	} ) );
 
-	QUnit.test( 'Sense test, object creation and ui construction', function ( assert ) {
-		var lightbox = new LightboxInterface();
+	QUnit.test( 'Sense test, object creation and ui construction', ( assert ) => {
+		const lightbox = new LightboxInterface();
 
 		stubScrollTo();
 
 		function checkIfUIAreasAttachedToDocument( inDocument ) {
-			var msg = ( inDocument === 1 ? ' ' : ' not ' ) + 'attached.';
+			const msg = ( inDocument === 1 ? ' ' : ' not ' ) + 'attached.';
 			assert.strictEqual( $( '.mw-mmv-wrapper' ).length, inDocument, 'Wrapper area' + msg );
 			assert.strictEqual( $( '.mw-mmv-main' ).length, inDocument, 'Main area' + msg );
 			assert.strictEqual( $( '.mw-mmv-title' ).length, inDocument, 'Title area' + msg );
@@ -60,9 +60,9 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 	} );
 
 	QUnit.test( 'Handler registration and clearance work OK', function ( assert ) {
-		var lightbox = new LightboxInterface(),
-			handlerCalls = 0,
-			clock = this.sandbox.useFakeTimers();
+		const lightbox = new LightboxInterface();
+		let handlerCalls = 0;
+		const clock = this.sandbox.useFakeTimers();
 
 		function handleEvent() {
 			handlerCalls++;
@@ -82,9 +82,9 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 		clock.restore();
 	} );
 
-	QUnit.test( 'Fullscreen mode init', function ( assert ) {
-		var lightbox = new LightboxInterface(),
-			enterFullscreen = Element.prototype.requestFullscreen;
+	QUnit.test( 'Fullscreen mode init', ( assert ) => {
+		const lightbox = new LightboxInterface();
+		const enterFullscreen = Element.prototype.requestFullscreen;
 
 		// Since we don't want these tests to really open fullscreen
 		// which is subject to user security confirmation,
@@ -134,12 +134,10 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 		restoreScrollTo();
 	} );
 
-	QUnit.test( 'Fullscreen mode', function ( assert ) {
-		var buttonOffset, panelBottom,
-			oldRevealButtonsAndFadeIfNeeded,
-			lightbox = new LightboxInterface(),
-			viewer = getMultimediaViewer(),
-			enterFullscreen = Element.prototype.requestFullscreen;
+	QUnit.test( 'Fullscreen mode', ( assert ) => {
+		const lightbox = new LightboxInterface();
+		const viewer = getMultimediaViewer();
+		const enterFullscreen = Element.prototype.requestFullscreen;
 
 		stubScrollTo();
 
@@ -164,7 +162,7 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 		};
 
 		// Pretend that the mouse cursor is on top of the button
-		buttonOffset = lightbox.buttons.$fullscreen.offset();
+		const buttonOffset = lightbox.buttons.$fullscreen.offset();
 		lightbox.mousePosition = { x: buttonOffset.left, y: buttonOffset.top };
 
 		// Enter fullscreen
@@ -173,7 +171,7 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 		lightbox.buttons.fadeOut = function () {};
 		assert.true( lightbox.isFullscreen, 'Lightbox knows that it\'s in fullscreen mode' );
 
-		oldRevealButtonsAndFadeIfNeeded = lightbox.buttons.revealAndFade;
+		const oldRevealButtonsAndFadeIfNeeded = lightbox.buttons.revealAndFade;
 
 		lightbox.buttons.revealAndFade = function ( position ) {
 			assert.true( true, 'Moving the cursor triggers a reveal + fade' );
@@ -186,7 +184,7 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 
 		lightbox.buttons.revealAndFadeIfNeeded = function () {};
 
-		panelBottom = $( '.mw-mmv-post-image' ).position().top + $( '.mw-mmv-post-image' ).height();
+		let panelBottom = $( '.mw-mmv-post-image' ).position().top + $( '.mw-mmv-post-image' ).height();
 
 		assert.strictEqual(
 			panelBottom.toFixed(),
@@ -205,7 +203,7 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 
 		panelBottom = $( '.mw-mmv-post-image' ).position().top + $( '.mw-mmv-post-image' ).height();
 
-		assert.true( panelBottom > $( window ).height(), 'Image metadata extends beyond the viewport' );
+		assert.false( panelBottom > $( window ).height(), 'Image metadata does not extend beyond the viewport' );
 		assert.strictEqual( lightbox.isFullscreen, false, 'Lightbox knows that it\'s not in fullscreen mode' );
 
 		// Unattach lightbox from document
@@ -215,50 +213,9 @@ const { getMultimediaViewer } = require( './mmv.testhelpers.js' );
 		restoreScrollTo();
 	} );
 
-	QUnit.test( 'isAnyActiveButtonHovered', function ( assert ) {
-		var lightbox = new LightboxInterface();
-
-		stubScrollTo();
-
-		// Attach lightbox to testing fixture to avoid interference with other tests.
-		lightbox.attach( '#qunit-fixture' );
-
-		lightbox.buttons.$buttons.each( function () {
-			var $button = $( this ),
-				offset = $button.show().offset(),
-				width = $button.width(),
-				height = $button.height(),
-				disabled = $button.hasClass( 'disabled' );
-
-			assert.strictEqual( lightbox.buttons.isAnyActiveButtonHovered( offset.left, offset.top ),
-				!disabled,
-				'Hover detection works for top-left corner of element' );
-			assert.strictEqual( lightbox.buttons.isAnyActiveButtonHovered( offset.left + width, offset.top ),
-				!disabled,
-				'Hover detection works for top-right corner of element' );
-			assert.strictEqual( lightbox.buttons.isAnyActiveButtonHovered( offset.left, offset.top + height ),
-				!disabled,
-				'Hover detection works for bottom-left corner of element' );
-			assert.strictEqual( lightbox.buttons.isAnyActiveButtonHovered( offset.left + width, offset.top + height ),
-				!disabled,
-				'Hover detection works for bottom-right corner of element' );
-			assert.strictEqual(
-				lightbox.buttons.isAnyActiveButtonHovered(
-					offset.left + ( width / 2 ), offset.top + ( height / 2 )
-				),
-				!disabled,
-				'Hover detection works for center of element'
-			);
-		} );
-
-		// Unattach lightbox from document
-		lightbox.unattach();
-		restoreScrollTo();
-	} );
-
-	QUnit.test( 'Keyboard prev/next', function ( assert ) {
-		var viewer = getMultimediaViewer(),
-			lightbox = new LightboxInterface();
+	QUnit.test( 'Keyboard prev/next', ( assert ) => {
+		const viewer = getMultimediaViewer();
+		const lightbox = new LightboxInterface();
 
 		viewer.setupEventHandlers();
 

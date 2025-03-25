@@ -4,8 +4,8 @@ namespace LoginNotify;
 
 use MediaWiki\Extension\Notifications\Formatters\EchoEventPresentationModel;
 use MediaWiki\Extension\Notifications\Model\Event;
-use Message;
-use SpecialPage;
+use MediaWiki\Message\Message;
+use MediaWiki\SpecialPage\SpecialPage;
 
 class PresentationModel extends EchoEventPresentationModel {
 

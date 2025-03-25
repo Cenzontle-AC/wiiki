@@ -1,21 +1,20 @@
 'use strict';
 
 /**
+ * Dynamic highlighting while reading an article
+ *
  * @author Thiemo Kreuz
  */
 ( function () {
 	/**
-	 * Checks if the ID uses a composite format that does not only consist of a sequential number,
-	 * as specified in "cite_reference_link_key_with_num".
+	 * Checks if the ID uses a composite format that does not only consist of a sequential number.
 	 *
 	 * @param {string} id
 	 * @return {boolean}
 	 */
 	function isNamedReference( id ) {
-		const prefix = mw.msg( 'cite_reference_link_prefix' );
-
 		// Note: This assumes IDs start with the prefix; this is guaranteed by the parser function
-		return /\D/.test( id.slice( prefix.length ) );
+		return /^cite_ref-\D/.test( id );
 	}
 
 	/**
@@ -90,7 +89,7 @@
 		$upArrowLink.attr( 'href', $backlink.attr( 'href' ) );
 	}
 
-	mw.hook( 'wikipage.content' ).add( function ( $content ) {
+	mw.hook( 'wikipage.content' ).add( ( $content ) => {
 		// We are going to use the ID in the code below, so better be sure one is there.
 		$content.find( '.reference[id] > a' ).on( 'click', function () {
 			const id = $( this ).parent().attr( 'id' );

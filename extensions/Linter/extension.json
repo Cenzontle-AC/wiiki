@@ -10,7 +10,11 @@
 	"descriptionmsg": "linter-desc",
 	"type": "specialpage",
 	"requires": {
-		"MediaWiki": ">= 1.41"
+		"MediaWiki": ">= 1.43"
+	},
+	"AutoloadClasses": {
+		"MediaWiki\\Linter\\Maintenance\\MigrateNamespace": "maintenance/migrateNamespace.php",
+		"MediaWiki\\Linter\\Maintenance\\MigrateTagTemplate": "maintenance/migrateTagTemplate.php"
 	},
 	"AutoloadNamespaces": {
 		"MediaWiki\\Linter\\": "includes/"
@@ -28,7 +32,14 @@
 		"main": {
 			"class": "MediaWiki\\Linter\\Hooks",
 			"services": [
-				"LinkRenderer"
+				"LinkRenderer",
+				"JobQueueGroup",
+				"WikiPageFactory",
+				"ParserOutputAccess",
+				"Linter.CategoryManager",
+				"Linter.TotalsLookup",
+				"Linter.Database",
+				"MainConfig"
 			]
 		},
 		"schema": {
@@ -42,19 +53,47 @@
 		"InfoAction": "main",
 		"WikiPageDeletionUpdates": "main",
 		"RevisionFromEditComplete": "main",
-		"ParserLogLinterData": "main"
+		"ParserLogLinterData": "main",
+		"RevisionDataUpdates": "main"
 	},
 	"APIListModules": {
-		"linterrors": "MediaWiki\\Linter\\ApiQueryLintErrors"
+		"linterrors": {
+			"class": "MediaWiki\\Linter\\ApiQueryLintErrors",
+			"services": [
+				"Linter.CategoryManager"
+			]
+		}
 	},
 	"APIMetaModules": {
-		"linterstats": "MediaWiki\\Linter\\ApiQueryLinterStats"
+		"linterstats": {
+			"class": "MediaWiki\\Linter\\ApiQueryLinterStats",
+			"services": [
+				"Linter.TotalsLookup"
+			]
+		}
 	},
 	"SpecialPages": {
-		"LintErrors": "MediaWiki\\Linter\\SpecialLintErrors"
+		"LintErrors": {
+			"class": "MediaWiki\\Linter\\SpecialLintErrors",
+			"services": [
+				"NamespaceInfo",
+				"TitleParser",
+				"LinkCache",
+				"PermissionManager",
+				"Linter.CategoryManager",
+				"Linter.TotalsLookup"
+			]
+		}
 	},
 	"JobClasses": {
-		"RecordLintJob": "MediaWiki\\Linter\\RecordLintJob"
+		"RecordLintJob": {
+			"class": "MediaWiki\\Linter\\RecordLintJob",
+			"services": [
+				"Linter.TotalsLookup",
+				"Linter.Database",
+				"Linter.CategoryManager"
+			]
+		}
 	},
 	"ResourceModules": {
 		"ext.linter.edit": {
@@ -104,15 +143,13 @@
 					"dbid": 6,
 					"enabled": true,
 					"priority": "high",
-					"has-name": true,
-					"parser-migration": true
+					"has-name": true
 				},
 				"deletable-table-tag": {
 					"dbid": 7,
 					"enabled": true,
 					"priority": "high",
-					"has-name": true,
-					"parser-migration": true
+					"has-name": true
 				},
 				"misnested-tag": {
 					"dbid": 8,
@@ -123,14 +160,12 @@
 				"pwrap-bug-workaround": {
 					"dbid": 9,
 					"enabled": true,
-					"priority": "high",
-					"parser-migration": true
+					"priority": "high"
 				},
 				"tidy-whitespace-bug": {
 					"dbid": 10,
 					"enabled": true,
-					"priority": "high",
-					"parser-migration": true
+					"priority": "high"
 				},
 				"multi-colon-escape": {
 					"dbid": 11,
@@ -141,41 +176,35 @@
 					"dbid": 12,
 					"enabled": true,
 					"priority": "high",
-					"has-name": true,
-					"parser-migration": true
+					"has-name": true
 				},
 				"tidy-font-bug": {
 					"dbid": 13,
 					"enabled": true,
 					"priority": "high",
-					"has-name": true,
-					"parser-migration": true
+					"has-name": true
 				},
 				"multiple-unclosed-formatting-tags": {
 					"dbid": 14,
 					"enabled": true,
 					"priority": "high",
-					"has-name": true,
-					"parser-migration": true
+					"has-name": true
 				},
 				"unclosed-quotes-in-heading": {
 					"dbid": 15,
 					"enabled": true,
 					"priority": "high",
-					"has-name": true,
-					"parser-migration": true
+					"has-name": true
 				},
 				"multiline-html-table-in-list": {
 					"dbid": 16,
 					"enabled": true,
-					"priority": "high",
-					"parser-migration": true
+					"priority": "high"
 				},
 				"misc-tidy-replacement-issues": {
 					"dbid": 17,
 					"enabled": true,
-					"priority": "high",
-					"parser-migration": true
+					"priority": "high"
 				},
 				"wikilink-in-extlink": {
 					"dbid": 18,
@@ -197,26 +226,42 @@
 				"missing-end-tag-in-heading": {
 					"dbid": 21,
 					"enabled": true,
-					"priority": "none",
+					"priority": "low",
 					"has-name": true
+				},
+				"night-mode-unaware-background-color": {
+					"dbid": 22,
+					"enabled": true,
+					"priority": "low",
+					"no-params": true
+				},
+				"missing-image-alt-text": {
+					"dbid": 23,
+					"enabled": false,
+					"priority": "none"
+				},
+				"fostered-transparent": {
+					"dbid": 24,
+					"enabled": true,
+					"priority": "none",
+					"no-params": true
+				},
+				"duplicate-ids": {
+					"dbid": 25,
+					"enabled": true,
+					"priority": "high"
 				}
 			}
 		},
 		"LinterStatsdSampleFactor": {
 			"value": false
 		},
-		"LinterWriteNamespaceColumnStage": {
-			"value": false
-		},
-		"LinterUseNamespaceColumnStage": {
-			"value": false
-		},
-		"LinterWriteTagAndTemplateColumnsStage": {
-			"value": false
-		},
-		"LinterUserInterfaceTagAndTemplateStage": {
-			"value": false
+		"LinterParseOnDerivedDataUpdate": {
+			"value": true
 		}
 	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
 	"manifest_version": 2
 }

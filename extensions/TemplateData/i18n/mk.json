@@ -66,7 +66,6 @@
 	"templatedata-modal-button-map": "Уреди карти",
 	"templatedata-modal-button-importParams": "Увези параметри",
 	"templatedata-modal-button-removemap": "Отстрани карта",
-	"templatedata-modal-button-restoreparam": "Поврати параметар",
 	"templatedata-modal-button-saveparam": "Зачувај",
 	"templatedata-modal-confirmcancel": "Дали сигурно сакате да ги отфрлите промените?",
 	"templatedata-modal-current-language": "Тековен јазик: $1",
@@ -88,6 +87,7 @@
 	"templatedata-modal-table-param-aliases": "Истозначници",
 	"templatedata-modal-table-param-autovalue": "Автовредност",
 	"templatedata-modal-table-param-default": "По основно ($1)",
+	"templatedata-modal-table-param-status": "Статус",
 	"templatedata-modal-table-param-deprecated": "Застарен",
 	"templatedata-modal-table-param-deprecatedValue": "Застарено напатствие",
 	"templatedata-modal-table-param-description": "Опис ($1)",
@@ -109,6 +109,6 @@
 	"templatedata-modal-title-templatedesc": "Опис на предлошката ($1)",
 	"templatedata-modal-title-templateformat": "Предложено форматирање на викитекстот",
 	"templatedata-modal-title-templateformatstring": "Низа во прилагодфен формат",
-	"templatedata-modal-title-templateparam-details": "Подробности за параметарот: $1",
+	"templatedata-modal-title-templateparam-details": "Поединости за параметарот: $1",
 	"templatedata-modal-title-templateparams": "Предложни параметри"
 }

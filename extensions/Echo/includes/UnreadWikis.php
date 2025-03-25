@@ -2,10 +2,10 @@
 
 namespace MediaWiki\Extension\Notifications;
 
-use CentralIdLookup;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\User\CentralId\CentralIdLookup;
 use MediaWiki\User\UserIdentity;
-use MWTimestamp;
+use MediaWiki\Utils\MWTimestamp;
 use Wikimedia\Rdbms\IDatabase;
 
 /**
@@ -69,16 +69,16 @@ class UnreadWikis {
 			return [];
 		}
 
-		$rows = $dbr->select(
-			'echo_unread_wikis',
-			[
+		$rows = $dbr->newSelectQueryBuilder()
+			->select( [
 				'euw_wiki',
 				'euw_alerts', 'euw_alerts_ts',
 				'euw_messages', 'euw_messages_ts',
-			],
-			[ 'euw_user' => $this->id ],
-			__METHOD__
-		);
+			] )
+			->from( 'echo_unread_wikis' )
+			->where( [ 'euw_user' => $this->id ] )
+			->caller( __METHOD__ )
+			->fetchResultSet();
 
 		$wikis = [];
 		foreach ( $rows as $row ) {
@@ -140,20 +140,21 @@ class UnreadWikis {
 			];
 
 			// when there is unread alert(s) and/or message(s), upsert the row
-			$dbw->upsert(
-				'echo_unread_wikis',
-				$conditions + $values,
-				[ [ 'euw_user', 'euw_wiki' ] ],
-				$values,
-				__METHOD__
-			);
+			$dbw->newInsertQueryBuilder()
+				->insertInto( 'echo_unread_wikis' )
+				->row( $conditions + $values )
+				->onDuplicateKeyUpdate()
+				->uniqueIndexFields( [ 'euw_user', 'euw_wiki' ] )
+				->set( $values )
+				->caller( __METHOD__ )
+				->execute();
 		} else {
 			// No unread notifications, delete the row
-			$dbw->delete(
-				'echo_unread_wikis',
-				$conditions,
-				__METHOD__
-			);
+			$dbw->newDeleteQueryBuilder()
+				->deleteFrom( 'echo_unread_wikis' )
+				->where( $conditions )
+				->caller( __METHOD__ )
+				->execute();
 		}
 	}
 }

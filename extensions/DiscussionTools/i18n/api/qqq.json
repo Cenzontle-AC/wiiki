@@ -7,6 +7,7 @@
 	"apierror-discussiontools-commentid-notfound": "{{doc-apierror}}\n\nParameters:\n* $1 - Comment ID",
 	"apierror-discussiontools-commentname-ambiguous": "{{doc-apierror}}\n\nParameters:\n* $1 - Comment name",
 	"apierror-discussiontools-commentname-notfound": "{{doc-apierror}}\n\nParameters:\n* $1 - Comment name",
+	"apierror-discussiontools-findcomment-pagenevertalk": "{{doc-apierror}}",
 	"apierror-discussiontools-formtoken-used": "{{doc-apierror}}",
 	"apierror-discussiontools-subscription-failed-add": "{{doc-apierror}}",
 	"apierror-discussiontools-subscription-failed-remove": "{{doc-apierror}}",
@@ -24,6 +25,8 @@
 	"apihelp-discussiontoolsedit-summary": "{{doc-apihelp-summary|discussiontoolsedit}}",
 	"apihelp-discussiontoolsfindcomment-summary": "{{doc-apihelp-summary|discussiontoolsfindcomment}}",
 	"apihelp-discussiontoolsfindcomment-param-idorname": "{{doc-apihelp-param|discussiontoolsfindcomment|idorname}}",
+	"apihelp-discussiontoolsfindcomment-param-heading": "{{doc-apihelp-param|discussiontoolsfindcomment|heading}}",
+	"apihelp-discussiontoolsfindcomment-param-page": "{{doc-apihelp-param|discussiontoolsfindcomment|page}}",
 	"apihelp-discussiontoolsgetsubscriptions-param-commentname": "{{doc-apihelp-param|discussiontoolsgetsubscriptions|commentname}}",
 	"apihelp-discussiontoolsgetsubscriptions-summary": "{{doc-apihelp-summary|discussiontoolsgetsubscriptions}}",
 	"apihelp-discussiontoolspageinfo-param-oldid": "{{doc-apihelp-param|discussiontoolspageinfo|oldid}}",
@@ -38,5 +41,7 @@
 	"apihelp-discussiontoolssubscribe-param-commentname": "{{doc-apihelp-param|discussiontoolssubscribe|commentname}}",
 	"apihelp-discussiontoolssubscribe-param-page": "{{doc-apihelp-param|discussiontoolssubscribe|page}}",
 	"apihelp-discussiontoolssubscribe-param-subscribe": "{{doc-apihelp-param|discussiontoolssubscribe|subscribe}}",
-	"apihelp-discussiontoolssubscribe-summary": "{{doc-apihelp-summary|discussiontoolssubscribe}}"
+	"apihelp-discussiontoolssubscribe-summary": "{{doc-apihelp-summary|discussiontoolssubscribe}}",
+	"apihelp-discussiontoolsthank-param-commentid": "{{doc-apihelp-summary|discussiontoolsthank|commentid}}",
+	"apihelp-discussiontoolsthank-summary": "{{doc-apihelp-summary|discussiontoolsthank}}"
 }

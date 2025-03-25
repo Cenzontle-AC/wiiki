@@ -10,34 +10,32 @@
 namespace MediaWiki\Extension\DiscussionTools\Hooks;
 
 use Article;
-use Config;
-use ConfigFactory;
-use ExtensionRegistry;
-use Html;
-use IContextSource;
 use MediaWiki\Actions\Hook\GetActionNameHook;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\DiscussionTools\CommentFormatter;
 use MediaWiki\Extension\DiscussionTools\CommentUtils;
 use MediaWiki\Extension\DiscussionTools\SubscriptionStore;
 use MediaWiki\Extension\VisualEditor\Hooks as VisualEditorHooks;
-use MediaWiki\Hook\BeforePageDisplayHook;
-use MediaWiki\Hook\OutputPageBeforeHTMLHook;
-use MediaWiki\Hook\OutputPageParserOutputHook;
 use MediaWiki\Hook\SidebarBeforeOutputHook;
 use MediaWiki\Hook\SkinTemplateNavigation__UniversalHook;
+use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Output\Hook\BeforePageDisplayHook;
+use MediaWiki\Output\Hook\OutputPageBeforeHTMLHook;
+use MediaWiki\Output\Hook\OutputPageParserOutputHook;
+use MediaWiki\Output\OutputPage;
 use MediaWiki\Page\Hook\BeforeDisplayNoArticleTextHook;
+use MediaWiki\Parser\ParserOutput;
+use MediaWiki\Registration\ExtensionRegistry;
+use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
+use MediaWiki\User\Options\UserOptionsLookup;
 use MediaWiki\User\UserIdentity;
 use MediaWiki\User\UserNameUtils;
-use MediaWiki\User\UserOptionsLookup;
 use OOUI\ButtonWidget;
-use OutputPage;
-use ParserOutput;
-use RequestContext;
 use Skin;
 use SkinTemplate;
-use SpecialPage;
 
 class PageHooks implements
 	BeforeDisplayNoArticleTextHook,
@@ -49,18 +47,15 @@ class PageHooks implements
 	SkinTemplateNavigation__UniversalHook
 {
 
-	private Config $config;
 	private SubscriptionStore $subscriptionStore;
 	private UserNameUtils $userNameUtils;
 	private UserOptionsLookup $userOptionsLookup;
 
 	public function __construct(
-		ConfigFactory $configFactory,
 		SubscriptionStore $subscriptionStore,
 		UserNameUtils $userNameUtils,
 		UserOptionsLookup $userOptionsLookup
 	) {
-		$this->config = $configFactory->makeConfig( 'discussiontools' );
 		$this->subscriptionStore = $subscriptionStore;
 		$this->userNameUtils = $userNameUtils;
 		$this->userOptionsLookup = $userOptionsLookup;
@@ -68,6 +63,7 @@ class PageHooks implements
 
 	private function isMobile(): bool {
 		if ( ExtensionRegistry::getInstance()->isLoaded( 'MobileFrontend' ) ) {
+			/** @var \MobileContext $mobFrontContext */
 			$mobFrontContext = MediaWikiServices::getInstance()->getService( 'MobileFrontend.Context' );
 			return $mobFrontContext->shouldDisplayMobileView();
 		}
@@ -86,29 +82,39 @@ class PageHooks implements
 	public function onBeforePageDisplay( $output, $skin ): void {
 		$user = $output->getUser();
 		$req = $output->getRequest();
+		$title = $output->getTitle();
+
 		foreach ( HookUtils::FEATURES as $feature ) {
 			// Add a CSS class for each enabled feature
 			if ( HookUtils::isFeatureEnabledForOutput( $output, $feature ) ) {
+				// The following CSS classes are generated here:
+				// * ext-discussiontools-replytool-enabled
+				// * ext-discussiontools-newtopictool-enabled
+				// * ext-discussiontools-sourcemodetoolbar-enabled
+				// * ext-discussiontools-topicsubscription-enabled
+				// * ext-discussiontools-autotopicsub-enabled
+				// * ext-discussiontools-visualenhancements-enabled
+				// * ext-discussiontools-visualenhancements_reply-enabled
+				// * ext-discussiontools-visualenhancements_pageframe-enabled
 				$output->addBodyClasses( "ext-discussiontools-$feature-enabled" );
 			}
 		}
 
-		if ( $this->isMobile() && HookUtils::isFeatureEnabledForOutput( $output, HookUtils::VISUALENHANCEMENTS ) ) {
+		$isMobile = $this->isMobile();
+
+		if ( $isMobile && HookUtils::isFeatureEnabledForOutput( $output, HookUtils::VISUALENHANCEMENTS ) ) {
 			$output->addBodyClasses( 'collapsible-headings-collapsed' );
 		}
 
 		// Load style modules if the tools can be available for the title
 		// to selectively hide DT features, depending on the body classes added above.
-		$availableForTitle = HookUtils::isAvailableForTitle( $output->getTitle() );
-		if ( $availableForTitle ) {
+		if ( HookUtils::isAvailableForTitle( $title ) ) {
 			$output->addModuleStyles( 'ext.discussionTools.init.styles' );
 		}
 
 		// Load modules if any DT feature is enabled for this user
 		if ( HookUtils::isFeatureEnabledForOutput( $output ) ) {
-			$output->addModules( [
-				'ext.discussionTools.init'
-			] );
+			$output->addModules( 'ext.discussionTools.init' );
 
 			$enabledVars = [];
 			foreach ( HookUtils::FEATURES as $feature ) {
@@ -130,17 +136,6 @@ class PageHooks implements
 					$editor
 				);
 			}
-		}
-
-		// This doesn't involve any DB checks, and so we can put it on every
-		// page to make it easy to pick for logging in WikiEditor. If this
-		// becomes not-cheap, move it elsewhere.
-		$abstate = HookUtils::determineUserABTestBucket( $user );
-		if ( $abstate ) {
-			$output->addJsConfigVars(
-				'wgDiscussionToolsABTestBucket',
-				$abstate
-			);
 		}
 
 		// Replace the action=edit&section=new form with the new topic tool.
@@ -171,9 +166,7 @@ class PageHooks implements
 			) );
 		}
 
-		if ( $output->getSkin()->getSkinName() === 'minerva' ) {
-			$title = $output->getTitle();
-
+		if ( $isMobile ) {
 			if (
 				$title->isTalkPage() &&
 				HookUtils::isFeatureEnabledForOutput( $output, HookUtils::REPLYTOOL ) && (
@@ -201,26 +194,19 @@ class PageHooks implements
 						] ) )
 					)
 				);
-
-				// Preload jquery.makeCollapsible for LedeSectionDialog.
-				// Using the same approach as in Skin::getDefaultModules in MediaWiki core.
-				if ( str_contains( $output->getHTML(), 'mw-collapsible' ) ) {
-					$output->addModules( 'jquery.makeCollapsible' );
-					$output->addModuleStyles( 'jquery.makeCollapsible.styles' );
-				}
 			}
+		}
 
+		if ( $output->getSkin()->getSkinName() === 'minerva' ) {
 			if (
-				$req->getRawVal( 'action', 'view' ) === 'view' &&
+				( $req->getRawVal( 'action' ) ?? 'view' ) === 'view' &&
 				HookUtils::isFeatureEnabledForOutput( $output, HookUtils::NEWTOPICTOOL ) &&
 				// Only add the button if "New section" tab would be shown in a normal skin.
 				HookUtils::shouldShowNewSectionTab( $output->getContext() )
 			) {
 				$output->enableOOUI();
-				$output->addModuleStyles( [
-					// For speechBubbleAdd
-					'oojs-ui.styles.icons-alerts',
-				] );
+				// For speechBubbleAdd
+				$output->addModuleStyles( 'oojs-ui.styles.icons-alerts' );
 				$output->addBodyClasses( 'ext-discussiontools-init-new-topic-opened' );
 
 				// Minerva doesn't show a new topic button.
@@ -264,55 +250,67 @@ class PageHooks implements
 		// multiple sources!
 
 		$isMobile = $this->isMobile();
+		$visualEnhancementsEnabled =
+			HookUtils::isFeatureEnabledForOutput( $output, HookUtils::VISUALENHANCEMENTS );
+		$visualEnhancementsReplyEnabled =
+			HookUtils::isFeatureEnabledForOutput( $output, HookUtils::VISUALENHANCEMENTS_REPLY );
 
 		if ( HookUtils::isFeatureEnabledForOutput( $output, HookUtils::TOPICSUBSCRIPTION ) ) {
 			// Just enable OOUI PHP - the OOUI subscribe button isn't infused unless VISUALENHANCEMENTS are enabled
 			$output->setupOOUI();
 			$text = CommentFormatter::postprocessTopicSubscription(
-				$text, $output, $this->subscriptionStore, $isMobile
+				$text, $output, $this->subscriptionStore, $isMobile, $visualEnhancementsEnabled
 			);
 		}
 
 		if ( HookUtils::isFeatureEnabledForOutput( $output, HookUtils::REPLYTOOL ) ) {
 			$output->enableOOUI();
-			$text = CommentFormatter::postprocessReplyTool( $text, $output, $isMobile );
+			$text = CommentFormatter::postprocessReplyTool(
+				$text, $output, $isMobile, $visualEnhancementsReplyEnabled
+			);
 		}
 
-		if ( HookUtils::isFeatureEnabledForOutput( $output, HookUtils::VISUALENHANCEMENTS ) ) {
+		if ( $visualEnhancementsEnabled ) {
 			$output->enableOOUI();
 			if ( HookUtils::isFeatureEnabledForOutput( $output, HookUtils::TOPICSUBSCRIPTION ) ) {
-				$output->addModuleStyles( [
-					// Visually enhanced topic subscriptions
-					// bell, bellOutline
-					'oojs-ui.styles.icons-alerts',
-				] );
+				// Visually enhanced topic subscriptions: bell, bellOutline
+				$output->addModuleStyles( 'oojs-ui.styles.icons-alerts' );
 			}
 			if (
 				$isMobile ||
 				(
-					HookUtils::isFeatureEnabledForOutput( $output, HookUtils::VISUALENHANCEMENTS_REPLY ) &&
+					$visualEnhancementsReplyEnabled &&
 					CommentFormatter::isLanguageRequiringReplyIcon( $output->getLanguage() )
 				)
 			) {
-				$output->addModuleStyles( [
-					// Reply button:
-					// share
-					'oojs-ui.styles.icons-content',
-				] );
+				// Reply button: share
+				$output->addModuleStyles( 'oojs-ui.styles.icons-content' );
 			}
+			$output->addModuleStyles( [
+				// Overflow menu ('ellipsis' icon)
+				'oojs-ui.styles.icons-interactions',
+			] );
 			if ( $isMobile ) {
 				$output->addModuleStyles( [
-					// Mobile overflow menu:
-					// ellipsis
-					'oojs-ui.styles.icons-interactions',
-					// edit
+					// Edit button in overflow menu ('edit' icon)
 					'oojs-ui.styles.icons-editing-core',
 				] );
 			}
 			$text = CommentFormatter::postprocessVisualEnhancements( $text, $output, $isMobile );
 		}
 
-		return true;
+		// Append empty state if the OutputPageParserOutput hook decided that we should.
+		// This depends on the order in which the hooks run. Hopefully it doesn't change.
+		if ( $output->getProperty( 'DiscussionTools-emptyStateHtml' ) ) {
+			// Insert before the last </div> tag, which should belong to <div class="mw-parser-output">
+			$idx = strrpos( $text, '</div>' );
+			$text = substr_replace(
+				$text,
+				$output->getProperty( 'DiscussionTools-emptyStateHtml' ),
+				$idx === false ? strlen( $text ) : $idx,
+				0
+			);
+		}
 	}
 
 	/**
@@ -333,8 +331,6 @@ class PageHooks implements
 		// This hook can be executed more than once per page view if the page content is composed from
 		// multiple sources!
 
-		$isMobile = $this->isMobile();
-
 		CommentFormatter::postprocessTableOfContents( $pout, $output );
 
 		if (
@@ -342,9 +338,11 @@ class PageHooks implements
 			HookUtils::shouldDisplayEmptyState( $output->getContext() )
 		) {
 			$output->enableOOUI();
-			CommentFormatter::appendToEmptyTalkPage(
-				$pout, $this->getEmptyStateHtml( $output->getContext() )
-			);
+			// This must be appended after the content of the page, which wasn't added to OutputPage yet.
+			// Pass it to the OutputPageBeforeHTML hook, so that it may add it at the right time.
+			// This depends on the order in which the hooks run. Hopefully it doesn't change.
+			$output->setProperty( 'DiscussionTools-emptyStateHtml',
+				$this->getEmptyStateHtml( $output->getContext() ) );
 			$output->addBodyClasses( 'ext-discussiontools-emptystate-shown' );
 		}
 
@@ -441,15 +439,10 @@ class PageHooks implements
 		$coreConfig = RequestContext::getMain()->getConfig();
 		$iconpath = $coreConfig->get( 'ExtensionAssetsPath' ) . '/DiscussionTools/images';
 
-		$dir = $context->getLanguage()->getDir();
-		$lang = $context->getLanguage()->getHtmlCode();
-
-		$titleMsg = false;
-		$descMsg = false;
 		$descParams = [];
 		$buttonMsg = 'discussiontools-emptystate-button';
 		$title = $context->getTitle();
-		if ( $title->getNamespace() === NS_USER_TALK && !$title->isSubpage() ) {
+		if ( $title->inNamespace( NS_USER_TALK ) && !$title->isSubpage() ) {
 			// This is a user talk page
 			$isIP = $this->userNameUtils->isIP( $title->getText() );
 			$isTemp = $this->userNameUtils->isTemp( $title->getText() );

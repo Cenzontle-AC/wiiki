@@ -1,7 +1,6 @@
 {
 	"@metadata": {
 		"authors": [
-			"Amire80",
 			"MRidhaAJ"
 		]
 	},
@@ -31,9 +30,11 @@
 	"discussiontools-findcomment-title": "دور على تعليق",
 	"discussiontools-ledesection-button": "تعلم بعد عن هاي الصفحة",
 	"discussiontools-ledesection-title": "عن صفحة النقاش هاي",
+	"discussiontools-newtopic-missing-title": "خلي اسم للسالفه {{GENDER:|مالتك|مالتج}}.",
+	"discussiontools-newtopic-missing-title-prompt": "ما {{GENDER:|خليت|خليتي}} اسم للسالفه {{GENDER:|مالتك|مالتج}}. صدك {{GENDER:|انته تريد تخلي|انتي تردين تخلين}} السالفه بدون اسم؟",
 	"discussiontools-replylink": "{{GENDER:|ردّ|ردّي}}",
 	"discussiontools-replywidget-advanced": "خيارات متقدمة",
-	"discussiontools-replywidget-cancel": "ألغي",
+	"discussiontools-replywidget-cancel": "الغي",
 	"discussiontools-replywidget-mode-source": "مصدر",
 	"discussiontools-replywidget-mode-visual": "مرئي",
 	"discussiontools-replywidget-placeholder-reply": "{{GENDER:|رد|ردي}} على {{BIDI:$1}}",

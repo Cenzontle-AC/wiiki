@@ -1,7 +1,7 @@
 /*!
  * VisualEditor Alignable class.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 /**
@@ -18,7 +18,7 @@ ve.ui.AlignableContextItem = function VeUiAlignableContextItem( context, model, 
 	// Parent constructor
 	ve.ui.AlignableContextItem.super.call( this, context, model, config );
 
-	var align = model.getAttribute( 'align' );
+	const align = model.getAttribute( 'align' );
 
 	this.align = new ve.ui.AlignWidget( {
 		dir: this.context.getSurface().getDir()
@@ -27,7 +27,7 @@ ve.ui.AlignableContextItem = function VeUiAlignableContextItem( context, model, 
 	this.align.connect( this, { choose: 'onAlignChoose' } );
 
 	if ( OO.ui.isMobile() ) {
-		this.align.items.forEach( function ( item ) {
+		this.align.items.forEach( ( item ) => {
 			item.setInvisibleLabel( true );
 		} );
 	}

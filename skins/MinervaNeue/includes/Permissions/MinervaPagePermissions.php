@@ -19,63 +19,38 @@
  */
 namespace MediaWiki\Minerva\Permissions;
 
-use Config;
-use ConfigException;
-use ContentHandler;
-use IContextSource;
+use MediaWiki\Config\Config;
+use MediaWiki\Config\ConfigException;
+use MediaWiki\Content\ContentHandler;
 use MediaWiki\Content\IContentHandlerFactory;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\MainConfigNames;
 use MediaWiki\Minerva\LanguagesHelper;
 use MediaWiki\Minerva\SkinOptions;
+use MediaWiki\Output\OutputPage;
 use MediaWiki\Permissions\Authority;
 use MediaWiki\Permissions\PermissionManager;
 use MediaWiki\Title\Title;
 use MediaWiki\User\UserFactory;
+use MediaWiki\Watchlist\WatchlistManager;
 
 /**
  * A wrapper for all available Minerva permissions.
  */
 final class MinervaPagePermissions implements IMinervaPagePermissions {
-	/**
-	 * @var Title Current page title
-	 */
-	private $title;
-	/**
-	 * @var Config Extension config
-	 */
-	private $config;
-
-	/**
-	 * @var Authority
-	 */
-	private $performer;
-
-	/**
-	 * @var ContentHandler
-	 */
-	private $contentHandler;
-
-	/**
-	 * @var SkinOptions Minerva skin options
-	 */
-	private $skinOptions;
-
-	/**
-	 * @var LanguagesHelper
-	 */
-	private $languagesHelper;
-
-	/**
-	 * @var PermissionManager
-	 */
-	private $permissionManager;
-
-	/**
-	 * @var IContentHandlerFactory
-	 */
-	private $contentHandlerFactory;
-
+	/** @var Title Current page title */
+	private ?Title $title;
+	/** @var Config Extension config */
+	private Config $config;
+	private Authority $performer;
+	private OutputPage $out;
+	private ContentHandler $contentHandler;
+	private SkinOptions $skinOptions;
+	private LanguagesHelper $languagesHelper;
+	private PermissionManager $permissionManager;
+	private IContentHandlerFactory $contentHandlerFactory;
 	private UserFactory $userFactory;
+	private WatchlistManager $watchlistManager;
 
 	/**
 	 * Initialize internal Minerva Permissions system
@@ -84,29 +59,33 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 * @param PermissionManager $permissionManager
 	 * @param IContentHandlerFactory $contentHandlerFactory
 	 * @param UserFactory $userFactory
+	 * @param WatchlistManager $watchlistManager
 	 */
 	public function __construct(
 		SkinOptions $skinOptions,
 		LanguagesHelper $languagesHelper,
 		PermissionManager $permissionManager,
 		IContentHandlerFactory $contentHandlerFactory,
-		UserFactory $userFactory
+		UserFactory $userFactory,
+		WatchlistManager $watchlistManager
 	) {
 		$this->skinOptions = $skinOptions;
 		$this->languagesHelper = $languagesHelper;
 		$this->permissionManager = $permissionManager;
 		$this->contentHandlerFactory = $contentHandlerFactory;
 		$this->userFactory = $userFactory;
+		$this->watchlistManager = $watchlistManager;
 	}
 
 	/**
 	 * @param IContextSource $context
 	 * @return $this
 	 */
-	public function setContext( IContextSource $context ) {
+	public function setContext( IContextSource $context ): self {
 		$this->title = $context->getTitle();
 		$this->config = $context->getConfig();
 		$this->performer = $context->getAuthority();
+		$this->out = $context->getOutput();
 		// Title may be undefined in certain contexts (T179833)
 		// TODO: Check if this is still true if we always pass a context instead of using global one
 		if ( $this->title ) {
@@ -134,9 +113,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 * @inheritDoc
 	 * @throws ConfigException
 	 */
-	public function isAllowed( $action ) {
-		global $wgHideInterlanguageLinks;
-
+	public function isAllowed( $action ): bool {
 		if ( !$this->title ) {
 			return false;
 		}
@@ -145,7 +122,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 		// the "switch-language" button. But disable "edit" and "watch" actions.
 		if ( $this->title->isMainPage() ) {
 			if ( $action === self::SWITCH_LANGUAGE ) {
-				return !$wgHideInterlanguageLinks;
+				return !$this->config->get( MainConfigNames::HideInterlanguageLinks );
 			}
 			// Only the talk page is allowed on the main page provided user is registered.
 			// talk page permission is disabled on mobile for anons
@@ -177,7 +154,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 		}
 
 		if ( $action === self::WATCHABLE || $action === self::WATCH ) {
-			$isWatchable = MediaWikiServices::getInstance()->getWatchlistManager()->isWatchable( $this->title );
+			$isWatchable = $this->watchlistManager->isWatchable( $this->title );
 
 			if ( $action === self::WATCHABLE ) {
 				return $isWatchable;
@@ -189,10 +166,10 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 		}
 
 		if ( $action === self::SWITCH_LANGUAGE ) {
-			if ( $wgHideInterlanguageLinks ) {
+			if ( $this->config->get( MainConfigNames::HideInterlanguageLinks ) ) {
 				return false;
 			}
-			return $this->languagesHelper->doesTitleHasLanguagesOrVariants( $this->title ) ||
+			return $this->languagesHelper->doesTitleHasLanguagesOrVariants( $this->out, $this->title ) ||
 				$this->config->get( 'MinervaAlwaysShowLanguageButton' );
 		}
 
@@ -215,7 +192,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	/**
 	 * @inheritDoc
 	 */
-	public function isTalkAllowed() {
+	public function isTalkAllowed(): bool {
 		return $this->isAllowed( self::TALK );
 	}
 
@@ -224,7 +201,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 *
 	 * @return bool
 	 */
-	protected function isCurrentPageContentModelEditable() {
+	protected function isCurrentPageContentModelEditable(): bool {
 		if ( !$this->contentHandler ) {
 			return false;
 		}
@@ -249,7 +226,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 * quick checks.
 	 * @return bool
 	 */
-	private function canEditOrCreate() {
+	private function canEditOrCreate(): bool {
 		if ( !$this->title ) {
 			return false;
 		}
@@ -275,7 +252,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 *
 	 * @return bool
 	 */
-	private function canMove() {
+	private function canMove(): bool {
 		if ( !$this->title ) {
 			return false;
 		}
@@ -289,7 +266,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 *
 	 * @return bool
 	 */
-	private function canDelete() {
+	private function canDelete(): bool {
 		if ( !$this->title ) {
 			return false;
 		}
@@ -303,7 +280,7 @@ final class MinervaPagePermissions implements IMinervaPagePermissions {
 	 *
 	 * @return bool
 	 */
-	private function canProtect() {
+	private function canProtect(): bool {
 		if ( !$this->title ) {
 			return false;
 		}

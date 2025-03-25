@@ -20,19 +20,20 @@
 
 namespace MediaWiki\Linter;
 
-use FormatJson;
+use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Json\FormatJson;
 use MediaWiki\Logger\LoggerFactory;
-use MediaWiki\MediaWikiServices;
-use MediaWiki\WikiMap\WikiMap;
 use stdClass;
 use Wikimedia\Rdbms\IDatabase;
 use Wikimedia\Rdbms\IReadableDatabase;
+use Wikimedia\Rdbms\LBFactory;
 use Wikimedia\Rdbms\SelectQueryBuilder;
 
 /**
  * Database logic
  */
 class Database {
+	public const CONSTRUCTOR_OPTIONS = [];
 
 	/**
 	 * Maximum number of errors to save per category,
@@ -48,50 +49,39 @@ class Database {
 	public const MAX_TAG_LENGTH = 30;
 	public const MAX_TEMPLATE_LENGTH = 250;
 
-	/**
-	 * @var int
-	 */
-	private $pageId;
+	private ServiceOptions $options;
+	private CategoryManager $categoryManager;
+	private LBFactory $dbLoadBalancerFactory;
 
 	/**
-	 * During the addition of this column to the table, the initial value of null allows the migrate stage code to
-	 * determine the needs to fill in the field for that record, as the record was created prior to
-	 * the write stage code being active and filling it in during record creation. Once the migrate code runs once
-	 * no nulls should exist in this field for any record, and if the migrate code times out during execution,
-	 * can be restarted and continue without duplicating work. The final code that enables the use of this field
-	 * during records search will depend on this fields index being valid for all records.
-	 * @var int|null
+	 * @param ServiceOptions $options
+	 * @param CategoryManager $categoryManager
+	 * @param LBFactory $dbLoadBalancerFactory
 	 */
-	private $namespaceID;
-
-	/**
-	 * @var CategoryManager
-	 */
-	private $categoryManager;
-
-	/**
-	 * @param int $pageId
-	 * @param int|null $namespaceID
-	 */
-	public function __construct( $pageId, $namespaceID = null ) {
-		$this->pageId = $pageId;
-		$this->namespaceID = $namespaceID;
-		$this->categoryManager = new CategoryManager();
+	public function __construct(
+		ServiceOptions $options,
+		CategoryManager $categoryManager,
+		LBFactory $dbLoadBalancerFactory
+	) {
+		$options->assertRequiredOptions( self::CONSTRUCTOR_OPTIONS );
+		$this->options = $options;
+		$this->categoryManager = $categoryManager;
+		$this->dbLoadBalancerFactory = $dbLoadBalancerFactory;
 	}
 
 	/**
 	 * @param int $mode DB_PRIMARY or DB_REPLICA
 	 * @return IDatabase
 	 */
-	public static function getDBConnectionRef( int $mode ): IDatabase {
-		return MediaWikiServices::getInstance()->getDBLoadBalancer()->getConnection( $mode );
+	public function getDBConnectionRef( int $mode ): IDatabase {
+		return $this->dbLoadBalancerFactory->getMainLB()->getConnection( $mode );
 	}
 
 	/**
 	 * @return IReadableDatabase
 	 */
-	public static function getReplicaDBConnection(): IReadableDatabase {
-		return MediaWikiServices::getInstance()->getDBLoadBalancerFactory()->getReplicaDatabase();
+	public function getReplicaDBConnection(): IReadableDatabase {
+		return $this->dbLoadBalancerFactory->getReplicaDatabase();
 	}
 
 	/**
@@ -100,17 +90,17 @@ class Database {
 	 * @param int $id linter_id
 	 * @return bool|LintError
 	 */
-	public function getFromId( $id ) {
-		$row = self::getReplicaDBConnection()->newSelectQueryBuilder()
+	public function getFromId( int $id ) {
+		$row = $this->getReplicaDBConnection()->newSelectQueryBuilder()
 			->select( [ 'linter_cat', 'linter_params', 'linter_start', 'linter_end' ] )
 			->from( 'linter' )
-			->where( [ 'linter_id' => $id, 'linter_page' => $this->pageId ] )
+			->where( [ 'linter_id' => $id ] )
 			->caller( __METHOD__ )
 			->fetchRow();
 
 		if ( $row ) {
 			$row->linter_id = $id;
-			return $this->makeLintError( $row );
+			return self::makeLintError( $this->categoryManager, $row );
 		} else {
 			return false;
 		}
@@ -119,12 +109,13 @@ class Database {
 	/**
 	 * Turn a database row into a LintError object
 	 *
+	 * @param CategoryManager $categoryManager
 	 * @param stdClass $row
 	 * @return LintError|bool false on error
 	 */
-	public static function makeLintError( $row ) {
+	public static function makeLintError( CategoryManager $categoryManager, $row ) {
 		try {
-			$name = ( new CategoryManager() )->getCategoryName( $row->linter_cat );
+			$name = $categoryManager->getCategoryName( $row->linter_cat );
 		} catch ( MissingCategoryException $e ) {
 			LoggerFactory::getInstance( 'Linter' )->error(
 				'Could not find name for id: {linter_cat}',
@@ -144,19 +135,20 @@ class Database {
 	/**
 	 * Get all the lint errors for a page
 	 *
+	 * @param int $pageId
 	 * @return LintError[]
 	 */
-	public function getForPage() {
-		$rows = self::getReplicaDBConnection()->newSelectQueryBuilder()
+	public function getForPage( int $pageId ) {
+		$rows = $this->getReplicaDBConnection()->newSelectQueryBuilder()
 			->select( [ 'linter_id', 'linter_cat', 'linter_start', 'linter_end', 'linter_params' ] )
 			->from( 'linter' )
-			->where( [ 'linter_page' => $this->pageId ] )
+			->where( [ 'linter_page' => $pageId ] )
 			->caller( __METHOD__ )
 			->fetchResultSet();
 
 		$result = [];
 		foreach ( $rows as $row ) {
-			$error = self::makeLintError( $row );
+			$error = self::makeLintError( $this->categoryManager, $row );
 			if ( !$error ) {
 				continue;
 			}
@@ -170,44 +162,35 @@ class Database {
 	 * Convert a LintError object into an array for
 	 * inserting/querying in the database
 	 *
+	 * @param int $pageId
+	 * @param int $namespaceId
 	 * @param LintError $error
 	 * @return array
 	 */
-	private function serializeError( LintError $error ) {
-		$mwServices = MediaWikiServices::getInstance();
-		$config = $mwServices->getMainConfig();
-
+	private function buildErrorRow( int $pageId, int $namespaceId, LintError $error ) {
 		$result = [
-			'linter_page' => $this->pageId,
+			'linter_page' => $pageId,
 			'linter_cat' => $this->categoryManager->getCategoryId( $error->category, $error->catId ),
 			'linter_params' => FormatJson::encode( $error->params, false, FormatJson::ALL_OK ),
 			'linter_start' => $error->location[ 0 ],
-			'linter_end' => $error->location[ 1 ]
+			'linter_end' => $error->location[ 1 ],
+			'linter_namespace' => $namespaceId
 		];
 
-		// To enable 756101
-		$enableWriteNamespaceColumn = $config->get( 'LinterWriteNamespaceColumnStage' );
-		if ( $enableWriteNamespaceColumn && $this->namespaceID !== null ) {
-			$result[ 'linter_namespace' ] = $this->namespaceID;
-		}
-
-		// To enable 720130
-		$enableWriteTagAndTemplateColumns = $config->get( 'LinterWriteTagAndTemplateColumnsStage' );
-		if ( $enableWriteTagAndTemplateColumns ) {
-			$templateInfo = $error->templateInfo ?? '';
-			if ( is_array( $templateInfo ) ) {
-				if ( isset( $templateInfo[ 'multiPartTemplateBlock' ] ) ) {
-					$templateInfo = 'multi-part-template-block';
-				} else {
-					$templateInfo = $templateInfo[ 'name' ] ?? '';
-				}
+		$templateInfo = $error->templateInfo ?? '';
+		if ( is_array( $templateInfo ) ) {
+			if ( isset( $templateInfo[ 'multiPartTemplateBlock' ] ) ) {
+				$templateInfo = 'multi-part-template-block';
+			} else {
+				$templateInfo = $templateInfo[ 'name' ] ?? '';
 			}
-			$templateInfo = mb_strcut( $templateInfo, 0, self::MAX_TEMPLATE_LENGTH );
-			$result[ 'linter_template' ] = $templateInfo;
-
-			$error->tagInfo = mb_strcut( $error->tagInfo, 0, self::MAX_TAG_LENGTH );
-			$result[ 'linter_tag' ] = $error->tagInfo ?? '';
 		}
+		$templateInfo = mb_strcut( $templateInfo, 0, self::MAX_TEMPLATE_LENGTH );
+		$result[ 'linter_template' ] = $templateInfo;
+
+		$tagInfo = $error->tagInfo ?? '';
+		$tagInfo = mb_strcut( $tagInfo, 0, self::MAX_TAG_LENGTH );
+		$result[ 'linter_tag' ] = $tagInfo;
 
 		return $result;
 	}
@@ -233,23 +216,25 @@ class Database {
 	 * Save the specified lint errors in the
 	 * database
 	 *
+	 * @param int $pageId
+	 * @param int $namespaceId
 	 * @param LintError[] $errors
 	 * @return array [ 'deleted' => [ cat => count ], 'added' => [ cat => count ] ]
 	 */
-	public function setForPage( $errors ) {
-		$previous = $this->getForPage();
-		$dbw = self::getDBConnectionRef( DB_PRIMARY );
+	public function setForPage( int $pageId, int $namespaceId, $errors ) {
+		$previous = $this->getForPage( $pageId );
+		$dbw = $this->getDBConnectionRef( DB_PRIMARY );
 		if ( !$previous && !$errors ) {
 			return [ 'deleted' => [], 'added' => [] ];
 		} elseif ( !$previous && $errors ) {
 			$toInsert = array_values( $errors );
 			$toDelete = [];
 		} elseif ( $previous && !$errors ) {
-			$dbw->delete(
-				'linter',
-				[ 'linter_page' => $this->pageId ],
-				__METHOD__
-			);
+			$dbw->newDeleteQueryBuilder()
+				->deleteFrom( 'linter' )
+				->where( [ 'linter_page' => $pageId ] )
+				->caller( __METHOD__ )
+				->execute();
 			return [ 'deleted' => $this->countByCat( $previous ), 'added' => [] ];
 		} else {
 			$toInsert = [];
@@ -272,22 +257,26 @@ class Database {
 					$ids[] = $lintError->lintId;
 				}
 			}
-			$dbw->delete(
-				'linter',
-				[ 'linter_id' => $ids ],
-				__METHOD__
-			);
+			$dbw->newDeleteQueryBuilder()
+				->deleteFrom( 'linter' )
+				->where( [ 'linter_id' => $ids ] )
+				->caller( __METHOD__ )
+				->execute();
 		}
 
 		if ( $toInsert ) {
 			// Insert into db, ignoring any duplicate key errors
 			// since they're the same lint error
-			$dbw->insert(
-				'linter',
-				array_map( [ $this, 'serializeError' ], $toInsert ),
-				__METHOD__,
-				[ 'IGNORE' ]
-			);
+			$dbw->newInsertQueryBuilder()
+				->insertInto( 'linter' )
+				->ignore()
+				->rows(
+					array_map( function ( LintError $error ) use ( $pageId, $namespaceId ) {
+						return $this->buildErrorRow( $pageId, $namespaceId, $error );
+					}, $toInsert )
+				)
+				->caller( __METHOD__ )
+				->execute();
 		}
 
 		return [
@@ -297,37 +286,29 @@ class Database {
 	}
 
 	/**
-	 * @return int[]
-	 */
-	public function getTotalsForPage() {
-		return $this->getTotalsAccurate( [ 'linter_page' => $this->pageId ] );
-	}
-
-	/**
 	 * Get an estimate of how many rows are there for the
 	 * specified category with EXPLAIN SELECT COUNT(*).
 	 * If the category actually has no rows, then 0 will
 	 * be returned.
 	 *
 	 * @param int $catId
-	 *
 	 * @return int
 	 */
 	private function getTotalsEstimate( $catId ) {
-		$dbr = self::getDBConnectionRef( DB_REPLICA );
+		$dbr = $this->getReplicaDBConnection();
 		// First see if there are no rows, or a moderate number
 		// within the limit specified by the MAX_ACCURATE_COUNT.
 		// The distinction between 0, a few and a lot is important
 		// to determine first, as estimateRowCount seem to never
 		// return 0 or accurate low error counts.
-		$rows = $dbr->selectRowCount(
-			'linter',
-			'*',
-			[ 'linter_cat' => $catId ],
-			__METHOD__,
+		$rows = $dbr->newSelectQueryBuilder()
+			->select( '*' )
+			->from( 'linter' )
+			->where( [ 'linter_cat' => $catId ] )
 			// Select 1 more so we can see if we're over the max limit
-			[ 'LIMIT' => self::MAX_ACCURATE_COUNT + 1 ]
-		);
+			->limit( self::MAX_ACCURATE_COUNT + 1 )
+			->caller( __METHOD__ )
+			->fetchRowCount();
 		// Return an accurate count if the number of errors is
 		// below the maximum accurate count limit
 		if ( $rows <= self::MAX_ACCURATE_COUNT ) {
@@ -335,42 +316,46 @@ class Database {
 		}
 		// Now we can just estimate if the maximum accurate count limit
 		// was returned, which isn't the actual count but the limit reached
-		return $dbr->estimateRowCount(
-			'linter',
-			'*',
-			[ 'linter_cat' => $catId ],
-			__METHOD__
-		);
+		return $dbr->newSelectQueryBuilder()
+			->select( '*' )
+			->from( 'linter' )
+			->where( [ 'linter_cat' => $catId ] )
+			->caller( __METHOD__ )
+			->estimateRowCount();
 	}
 
 	/**
 	 * This uses COUNT(*), which is accurate, but can be significantly
 	 * slower depending upon how many rows are in the database.
 	 *
-	 * @param array $conds
-	 *
+	 * @param int $pageId
 	 * @return int[]
 	 */
-	private function getTotalsAccurate( $conds = [] ) {
-		$rows = self::getReplicaDBConnection()->newSelectQueryBuilder()
+	public function getTotalsForPage( int $pageId ): array {
+		$rows = $this->getReplicaDBConnection()->newSelectQueryBuilder()
 			->select( [ 'linter_cat', 'COUNT(*) AS count' ] )
 			->from( 'linter' )
-			->where( $conds )
+			->where( [ 'linter_page' => $pageId ] )
 			->caller( __METHOD__ )
 			->groupBy( 'linter_cat' )
 			->fetchResultSet();
 
 		// Initialize zero values
-		$ret = array_fill_keys( $this->categoryManager->getVisibleCategories(), 0 );
+		$categories = $this->categoryManager->getVisibleCategories();
+		$ret = array_fill_keys( $categories, 0 );
 		foreach ( $rows as $row ) {
 			try {
 				$catName = $this->categoryManager->getCategoryName( $row->linter_cat );
 			} catch ( MissingCategoryException $e ) {
 				continue;
 			}
+			// Only set visible categories.  Alternatively, we could add another
+			// where clause to the selection above.
+			if ( !in_array( $catName, $categories, true ) ) {
+				continue;
+			}
 			$ret[$catName] = (int)$row->count;
 		}
-
 		return $ret;
 	}
 
@@ -388,90 +373,29 @@ class Database {
 	}
 
 	/**
-	 * Send stats to statsd and update totals cache
-	 *
-	 * @param array $changes
-	 */
-	public function updateStats( array $changes ) {
-		$mwServices = MediaWikiServices::getInstance();
-
-		$totalsLookup = new TotalsLookup(
-			new CategoryManager(),
-			$mwServices->getMainWANObjectCache()
-		);
-
-		$linterStatsdSampleFactor = $mwServices->getMainConfig()->get( 'LinterStatsdSampleFactor' );
-
-		if ( $linterStatsdSampleFactor === false ) {
-			// Don't send to statsd, but update cache with $changes
-			$raw = $changes['added'];
-			foreach ( $changes['deleted'] as $cat => $count ) {
-				if ( isset( $raw[$cat] ) ) {
-					$raw[$cat] -= $count;
-				} else {
-					// Negative value
-					$raw[$cat] = 0 - $count;
-				}
-			}
-
-			foreach ( $raw as $cat => $count ) {
-				if ( $count != 0 ) {
-					// There was a change in counts, invalidate the cache
-					$totalsLookup->touchCategoryCache( $cat );
-				}
-			}
-			return;
-		} elseif ( mt_rand( 1, $linterStatsdSampleFactor ) != 1 ) {
-			return;
-		}
-
-		$totals = $this->getTotals();
-		$wiki = WikiMap::getCurrentWikiId();
-
-		$stats = $mwServices->getStatsdDataFactory();
-		foreach ( $totals as $name => $count ) {
-			$stats->gauge( "linter.category.$name.$wiki", $count );
-		}
-
-		$stats->gauge( "linter.totals.$wiki", array_sum( $totals ) );
-
-		$totalsLookup->touchAllCategoriesCache();
-	}
-
-	/**
 	 * This code migrates namespace ID identified by the Linter records linter_page
 	 * field and populates the new linter_namespace field if it is unpopulated.
 	 * This code is intended to be run once though it could be run multiple times
 	 * using `--force` if needed via the maintenance script.
 	 * It is safe to run more than once, and will quickly exit if no records need updating.
+	 *
 	 * @param int $pageBatchSize
 	 * @param int $linterBatchSize
 	 * @param int $sleep
-	 * @param bool $bypassConfig
 	 * @return int number of pages updated, each with one or more linter records
 	 */
-	public static function migrateNamespace( int $pageBatchSize,
-		 int $linterBatchSize,
-		 int $sleep,
-		 bool $bypassConfig = false ): int {
-		// code used by phpunit test, bypassed when run as a maintenance script
-		if ( !$bypassConfig ) {
-			$mwServices = MediaWikiServices::getInstance();
-			$config = $mwServices->getMainConfig();
-			$enableMigrateNamespaceStage = $config->get( 'LinterWriteNamespaceColumnStage' );
-			if ( !$enableMigrateNamespaceStage ) {
-				return 0;
-			}
-		}
-		if ( gettype( $sleep ) !== 'integer' || $sleep < 0 ) {
+	public function migrateNamespace(
+		int $pageBatchSize, int $linterBatchSize, int $sleep
+	): int {
+		if ( $sleep < 0 ) {
 			$sleep = 0;
 		}
 
-		$logger = LoggerFactory::getInstance( 'MigrateNamespaceChannel' );
+		$logger = LoggerFactory::getInstance( 'Linter' );
 
-		$lbFactory = MediaWikiServices::getInstance()->getDBLoadBalancerFactory();
-		$dbw = self::getDBConnectionRef( DB_PRIMARY );
-		$dbread = self::getDBConnectionRef( DB_REPLICA );
+		$lbFactory = $this->dbLoadBalancerFactory;
+		$dbw = $this->getDBConnectionRef( DB_PRIMARY );
+		$dbread = $this->getDBConnectionRef( DB_REPLICA );
 
 		$logger->info( "Migrate namespace starting\n" );
 
@@ -481,15 +405,16 @@ class Database {
 			// Gather some unique pageId values in linter table records into an array
 			$linterPages = [];
 
-			$queryLinterTable = new SelectQueryBuilder( $dbw );
-			$queryLinterTable
-				->select( 'DISTINCT linter_page' )
+			$result = $dbw->newSelectQueryBuilder()
+				->select( 'linter_page' )
+				->distinct()
 				->from( 'linter' )
-				->where( [ 'linter_namespace IS NULL', 'linter_page > ' . $lastElement ] )
+				->where( $dbw->expr( 'linter_page', '>', $lastElement ) )
+				->andWhere( [ 'linter_namespace' => null ] )
 				->orderBy( 'linter_page' )
 				->limit( $linterBatchSize )
-				->caller( __METHOD__ );
-			$result = $queryLinterTable->fetchResultSet();
+				->caller( __METHOD__ )
+				->fetchResultSet();
 
 			foreach ( $result as $row ) {
 				$lastElement = intval( $row->linter_page );
@@ -503,30 +428,29 @@ class Database {
 
 				if ( count( $pageIdBatch ) > 0 ) {
 
-					$queryPageTable = new SelectQueryBuilder( $dbread );
-					$queryPageTable
-						->fields( [ 'page_id', 'page_namespace' ] )
+					$pageResults = $dbread->newSelectQueryBuilder()
+						->select( [ 'page_id', 'page_namespace' ] )
 						->from( 'page' )
 						->where( [ 'page_id' => $pageIdBatch ] )
-						->caller( __METHOD__ );
-
-					$pageResults = $queryPageTable->fetchResultSet();
+						->caller( __METHOD__ )
+						->fetchResultSet();
 
 					foreach ( $pageResults as $pageRow ) {
 						$pageId = intval( $pageRow->page_id );
-						$namespaceID = intval( $pageRow->page_namespace );
+						$namespaceId = intval( $pageRow->page_namespace );
 
 						// If a record about to be updated has been removed by another process,
 						// the update will not error, and continue updating the existing records.
-						$dbw->update(
-							'linter',
-							[
-								'linter_namespace' => $namespaceID
-							],
-							[ 'linter_namespace IS NULL', 'linter_page = ' . $pageId ],
-							__METHOD__
-						);
-						$updated++;
+						$dbw->newUpdateQueryBuilder()
+							->update( 'linter' )
+							->set( [ 'linter_namespace' => $namespaceId ] )
+							->where( [
+								'linter_namespace' => null,
+								'linter_page' => $pageId
+							] )
+							->caller( __METHOD__ )
+							->execute();
+						$updated += $dbw->affectedRows();
 					}
 
 					// Sleep between batches for replication to catch up
@@ -554,48 +478,40 @@ class Database {
 	 * Note: When linter_params are not set, the content is set to '[]' indicating no content
 	 * and the code also handles a null linter_params field if found.
 	 * This code is only run once by maintenance script migrateTagTemplate.php
+	 *
 	 * @param int $batchSize
 	 * @param int $sleep
-	 * @param bool $bypassConfig
 	 * @return int
 	 */
-	public static function migrateTemplateAndTagInfo( int $batchSize,
-		int $sleep,
-		bool $bypassConfig = false
+	public function migrateTemplateAndTagInfo(
+		int $batchSize, int $sleep
 	): int {
-		// code used by phpunit test, bypassed when run as a maintenance script
-		if ( !$bypassConfig ) {
-			$mwServices = MediaWikiServices::getInstance();
-			$config = $mwServices->getMainConfig();
-			$enableMigrateTagAndTemplateColumnsStage = $config->get( 'LinterWriteTagAndTemplateColumnsStage' );
-			if ( !$enableMigrateTagAndTemplateColumnsStage ) {
-				return 0;
-			}
-		}
-		if ( gettype( $sleep ) !== 'integer' || $sleep < 0 ) {
+		if ( $sleep < 0 ) {
 			$sleep = 0;
 		}
 
-		$logger = LoggerFactory::getInstance( 'MigrateTagAndTemplateChannel' );
+		$logger = LoggerFactory::getInstance( 'Linter' );
 
-		$lbFactory = MediaWikiServices::getInstance()->getDBLoadBalancerFactory();
-		$dbw = self::getDBConnectionRef( DB_PRIMARY );
+		$lbFactory = $this->dbLoadBalancerFactory;
+		$dbw = $this->getDBConnectionRef( DB_PRIMARY );
 
 		$logger->info( "Migration of linter_params field to linter_tag and linter_template fields starting\n" );
 
 		$updated = 0;
 		$lastElement = 0;
 		do {
-			$queryLinterTable = new SelectQueryBuilder( $dbw );
-			$queryLinterTable
-				->table( 'linter' )
-				->fields( [ 'linter_id', 'linter_params', 'linter_template', 'linter_tag' ] )
-				->where( [ 'linter_params != \'[]\'', 'linter_params IS NOT NULL', 'linter_id > ' . $lastElement ] )
+			$results = $dbw->newSelectQueryBuilder()
+				->select( [ 'linter_id', 'linter_params', 'linter_template', 'linter_tag' ] )
+				->from( 'linter' )
+				->where( [
+					$dbw->expr( "linter_params", '!=', '[]' ),
+					$dbw->expr( "linter_params", '!=', null ),
+					$dbw->expr( "linter_id", '>', $lastElement )
+				] )
 				->orderBy( 'linter_id', selectQueryBuilder::SORT_ASC )
 				->limit( $batchSize )
-				->caller( __METHOD__ );
-			$results = $queryLinterTable->fetchResultSet();
-
+				->caller( __METHOD__ )
+				->fetchResultSet();
 			$linterBatchLength = 0;
 
 			foreach ( $results as $row ) {
@@ -625,15 +541,13 @@ class Database {
 				if ( $templateInfo != $row->linter_template || $tagInfo != $row->linter_tag ) {
 					// If the record about to be updated has been removed by another process,
 					// the update will not do anything and just return with no records updated.
-					$dbw->update(
-						'linter',
-						[
-							'linter_template' => $templateInfo, 'linter_tag' => $tagInfo
-						],
-						[ 'linter_id' => $linter_id ],
-						__METHOD__
-					);
-					$updated++;
+					$dbw->newUpdateQueryBuilder()
+						->update( 'linter' )
+						->set( [ 'linter_template' => $templateInfo, 'linter_tag' => $tagInfo, ] )
+						->where( [ 'linter_id' => $linter_id ] )
+						->caller( __METHOD__ )
+						->execute();
+					$updated += $dbw->affectedRows();
 				}
 				$linterBatchLength++;
 			}

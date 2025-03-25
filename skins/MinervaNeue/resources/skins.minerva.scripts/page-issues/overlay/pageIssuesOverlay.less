@@ -13,17 +13,19 @@
 
 // overlay styles
 .overlay-issues {
-	.cleanup {
+	ul.cleanup {
+		list-style: none;
+
 		> li {
 			border-bottom: @border-subtle;
 
 			.issue-notice {
 				padding: @smallIconSize @smallIconSize @smallIconSize 0;
 
-				.mf-icon {
+				.minerva-ambox-icon {
 					float: left;
 					position: relative;
-					left: ( @contentPadding / 2 ) + @spacing-horizontal-button;
+					left: ( @padding-content / 2 ) + @spacing-horizontal-button;
 				}
 			}
 
@@ -48,6 +50,10 @@
 		// but line-height should be normal for text that follows (T190469)
 		> ::first-line {
 			line-height: 1;
+		}
+
+		p {
+			margin: 0;
 		}
 
 		// assume date

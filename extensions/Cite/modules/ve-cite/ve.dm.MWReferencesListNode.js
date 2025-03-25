@@ -10,11 +10,9 @@
 /**
  * DataModel MediaWiki references list node.
  *
- * @class
- * @extends ve.dm.BranchNode
- * @mixin ve.dm.FocusableNode
- *
  * @constructor
+ * @extends ve.dm.BranchNode
+ * @mixes ve.dm.FocusableNode
  * @param {Object} [element] Reference to element in linear model
  * @param {ve.dm.Node[]} [children]
  */
@@ -77,9 +75,11 @@ ve.dm.MWReferencesListNode.static.matchFunction = function ( domElement ) {
 			domElement.nextElementSibling &&
 			domElement.nextElementSibling.getAttribute( 'about' ) === domElement.getAttribute( 'about' ) &&
 			// A div-wrapped reference list
-			domElement.nextElementSibling.children.length === 1 && isRefList( domElement.nextElementSibling.children[ 0 ] )
-			// TODO: We should probably check there aren't subsequent elements. This and the above
-			// checks would be easier if the matchFunction was passed all the elements in the about group.
+			domElement.nextElementSibling.children.length === 1 &&
+			isRefList( domElement.nextElementSibling.children[ 0 ] )
+			// TODO: We should probably check there aren't subsequent elements. This
+			// and the above checks would be easier if the matchFunction was passed
+			// all the elements in the about group.
 		);
 };
 
@@ -100,13 +100,14 @@ ve.dm.MWReferencesListNode.static.toDataElement = function ( domElements, conver
 
 	const mwDataJSON = refListNode.getAttribute( 'data-mw' );
 	const mwData = mwDataJSON ? JSON.parse( mwDataJSON ) : {};
-	const refGroup = ve.getProp( mwData, 'attrs', 'group' ) || '';
-	const responsiveAttr = ve.getProp( mwData, 'attrs', 'responsive' );
+	const mwAttrs = mwData.attrs || {};
+	const refGroup = mwAttrs.group || '';
+	const responsiveAttr = mwAttrs.responsive;
 	const listGroup = 'mwReference/' + refGroup;
 	const templateGenerated = type.indexOf( 'mw:Transclusion' ) !== -1;
 	const isResponsiveDefault = mw.config.get( 'wgCiteResponsiveReferences' );
 
-	let referencesListData = {
+	const referencesListElement = {
 		type: this.name,
 		attributes: {
 			mw: mwData,
@@ -123,22 +124,26 @@ ve.dm.MWReferencesListNode.static.toDataElement = function ( domElements, conver
 		const contentsDiv = domElements[ 0 ].ownerDocument.createElement( 'div' );
 		contentsDiv.innerHTML = mwData.body.html;
 		const contentsData = converter.getDataFromDomClean( contentsDiv );
-		referencesListData = [ referencesListData ]
-			.concat( contentsData )
-			.concat( [ { type: '/' + this.name } ] );
+		return [
+			referencesListElement,
+			...contentsData,
+			{ type: '/' + this.name }
+		];
 	}
-	return referencesListData;
+	return referencesListElement;
 };
 
 ve.dm.MWReferencesListNode.static.toDomElements = function ( data, doc, converter ) {
 	const isForParser = converter.isForParser();
 	const dataElement = data[ 0 ];
-	const attrs = dataElement.attributes;
+	const attributes = dataElement.attributes;
 
-	// If we are sending a template generated ref back to Parsoid, output it as a template.
-	// This works because the dataElement already has mw, originalMw and originalDomIndex properties.
-	if ( attrs.templateGenerated && isForParser ) {
-		return ve.dm.MWTransclusionNode.static.toDomElements.call( this, dataElement, doc, converter );
+	// If we are sending a template generated ref back to Parsoid, output it as a
+	// template.  This works because the dataElement already has mw, originalMw
+	// and originalDomIndex properties.
+	if ( attributes.templateGenerated && isForParser ) {
+		return ve.dm.MWTransclusionNode.static
+			.toDomElements.call( this, dataElement, doc, converter );
 	}
 
 	let els;
@@ -152,36 +157,38 @@ ve.dm.MWReferencesListNode.static.toDomElements = function ( data, doc, converte
 		viewNode.update();
 		els = [ doc.createElement( 'div' ) ];
 		els[ 0 ].appendChild( viewNode.$reflist[ 0 ] );
-		// Destroy the view node so it doesn't try to update the DOM node later (e.g. updateDebounced)
+		// Destroy the view node so it doesn't try to update the DOM node later
+		// (e.g. updateDebounced)
 		viewNode.destroy();
 	} else if ( dataElement.originalDomElementsHash !== undefined ) {
 		// If there's more than 1 element, preserve entire array, not just first element
-		els = ve.copyDomElements( converter.getStore().value( dataElement.originalDomElementsHash ), doc );
+		els = ve.copyDomElements(
+			converter.getStore().value( dataElement.originalDomElementsHash ), doc );
 	} else {
 		els = [ doc.createElement( 'div' ) ];
 	}
 
-	const mwData = attrs.mw ? ve.copy( attrs.mw ) : {};
+	const mwData = attributes.mw ? ve.copy( attributes.mw ) : {};
 
 	mwData.name = 'references';
 
-	if ( attrs.refGroup ) {
-		ve.setProp( mwData, 'attrs', 'group', attrs.refGroup );
+	if ( attributes.refGroup ) {
+		ve.setProp( mwData, 'attrs', 'group', attributes.refGroup );
 	} else if ( mwData.attrs ) {
-		delete mwData.attrs.refGroup;
+		delete mwData.attrs.group;
 	}
 
-	const originalMw = attrs.originalMw;
+	const originalMw = attributes.originalMw;
 	const originalMwData = originalMw && JSON.parse( originalMw );
 	const originalResponsiveAttr = ve.getProp( originalMwData, 'attrs', 'responsive' );
 	const isResponsiveDefault = mw.config.get( 'wgCiteResponsiveReferences' );
 
 	if ( !(
 		// The original "responsive" attribute hasn't had its meaning changed
-		originalResponsiveAttr !== undefined && ( originalResponsiveAttr !== '0' ) === attrs.isResponsive
+		originalResponsiveAttr !== undefined && ( originalResponsiveAttr !== '0' ) === attributes.isResponsive
 	) ) {
-		if ( attrs.isResponsive !== isResponsiveDefault ) {
-			ve.setProp( mwData, 'attrs', 'responsive', attrs.isResponsive ? '' : '0' );
+		if ( attributes.isResponsive !== isResponsiveDefault ) {
+			ve.setProp( mwData, 'attrs', 'responsive', attributes.isResponsive ? '' : '0' );
 		} else if ( mwData.attrs ) {
 			delete mwData.attrs.responsive;
 		}
@@ -262,13 +269,14 @@ ve.dm.MWReferencesListNode.static.describeChange = function ( key, change ) {
 };
 
 ve.dm.MWReferencesListNode.static.getHashObject = function ( dataElement ) {
+	const attributes = dataElement.attributes;
 	return {
 		type: dataElement.type,
 		attributes: {
-			refGroup: dataElement.attributes.refGroup,
-			listGroup: dataElement.attributes.listGroup,
-			isResponsive: dataElement.attributes.isResponsive,
-			templateGenerated: dataElement.attributes.templateGenerated
+			refGroup: attributes.refGroup,
+			listGroup: attributes.listGroup,
+			isResponsive: attributes.isResponsive,
+			templateGenerated: attributes.templateGenerated
 		}
 	};
 };

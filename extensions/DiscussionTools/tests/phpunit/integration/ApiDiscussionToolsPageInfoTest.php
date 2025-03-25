@@ -2,10 +2,8 @@
 
 namespace MediaWiki\Extension\DiscussionTools\Tests;
 
-use ApiTestCase;
 use MediaWiki\Extension\DiscussionTools\ApiDiscussionToolsPageInfo;
-use MediaWiki\MainConfigNames;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Tests\Api\ApiTestCase;
 use Wikimedia\TestingAccessWrapper;
 
 /**
@@ -16,28 +14,6 @@ use Wikimedia\TestingAccessWrapper;
 class ApiDiscussionToolsPageInfoTest extends ApiTestCase {
 
 	use TestUtils;
-
-	/**
-	 * Setup the MW environment
-	 *
-	 * @param array $config
-	 * @param array $data
-	 */
-	protected function setupEnv( array $config, array $data ): void {
-		$this->overrideConfigValues( [
-			MainConfigNames::NamespaceAliases => $config['wgNamespaceIds'],
-			MainConfigNames::MetaNamespace => strtr( $config['wgFormattedNamespaces'][NS_PROJECT], ' ', '_' ),
-			MainConfigNames::MetaNamespaceTalk =>
-				strtr( $config['wgFormattedNamespaces'][NS_PROJECT_TALK], ' ', '_' ),
-			// TODO: Move this to $config
-			MainConfigNames::Localtimezone => $data['localTimezone'],
-			// Data used for the tests assumes there are no variants for English.
-			// Language variants are tested using other languages.
-			MainConfigNames::UsePigLatinVariant => false,
-		] + $config );
-		$this->setUserLang( $config['wgContentLanguage'] );
-		$this->setContentLang( $config['wgContentLanguage'] );
-	}
 
 	/**
 	 * @dataProvider provideGetThreadItemsHtml
@@ -54,9 +30,8 @@ class ApiDiscussionToolsPageInfoTest extends ApiTestCase {
 		$doc = static::createDocument( $dom );
 		$container = static::getThreadContainer( $doc );
 
-		$this->setupEnv( $config, $data );
-		$title = MediaWikiServices::getInstance()->getTitleParser()->parseTitle( $title );
-		$threadItemSet = static::createParser( $data )->parse( $container, $title );
+		$title = $this->getServiceContainer()->getTitleParser()->parseTitle( $title );
+		$threadItemSet = $this->createParser( $config, $data )->parse( $container, $title );
 
 		$pageInfo = TestingAccessWrapper::newFromClass( ApiDiscussionToolsPageInfo::class );
 

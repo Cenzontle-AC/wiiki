@@ -1,7 +1,7 @@
 /*!
  * VisualEditor initialization support checker.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 ( function () {
@@ -12,7 +12,7 @@
 	 * use this to check for feature compatibility this file must be ES3-parsable.
 	 *
 	 * @method VisualEditorSupportCheck
-	 * @member global
+	 * @memberof ve
 	 * @return {boolean} True if the environment should support VisualEditor.
 	 */
 	window.VisualEditorSupportCheck = function () {
@@ -41,7 +41,7 @@
 
 			/* DOMParser */
 			( function () {
-				var doc;
+				let doc;
 				try {
 					doc = new DOMParser().parseFromString( '<body></body>', 'text/html' );
 				} catch ( e ) {}

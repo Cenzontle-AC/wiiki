@@ -2,10 +2,10 @@
 
 namespace MediaWiki\Extension\Math\InputCheck;
 
-use HashBagOStuff;
+use MediaWiki\Message\Message;
 use MediaWikiIntegrationTestCase;
-use Message;
-use WANObjectCache;
+use Wikimedia\ObjectCache\HashBagOStuff;
+use Wikimedia\ObjectCache\WANObjectCache;
 
 /**
  * @group Math
@@ -117,7 +117,8 @@ class LocalCheckerTest extends MediaWikiIntegrationTestCase {
 	public function testRunChecks() {
 		$fakeContent = [
 			'status' => '+',
-			'mathml' => '<mi>sin</mi><msup><mi>x</mi><mrow data-mjx-texclass="ORD"><mn>2</mn></mrow></msup>',
+			'mathml' => '<mi>sin</mi><mo>&#x2061;</mo><msup><mi>x</mi>'
+						. '<mrow data-mjx-texclass="ORD"><mn>2</mn></mrow></msup>',
 			'output' => '\\sin x^{2}'
 		];
 		$checker = new LocalChecker( WANObjectCache::newEmpty(), '\sin x^2', 'tex' );

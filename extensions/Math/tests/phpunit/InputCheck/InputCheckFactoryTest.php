@@ -9,10 +9,10 @@ use MediaWiki\Extension\Math\InputCheck\MathoidChecker;
 use MediaWiki\Extension\Math\InputCheck\RestbaseChecker;
 use MediaWiki\Http\HttpRequestFactory;
 use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\Message\Message;
 use MediaWiki\Tests\Unit\MockServiceDependenciesTrait;
 use MediaWikiIntegrationTestCase;
-use Message;
-use WANObjectCache;
+use Wikimedia\ObjectCache\WANObjectCache;
 
 /**
  * @method InputCheckFactory newServiceInstance(string $serviceClass, array $parameterOverrides)
@@ -22,7 +22,9 @@ class InputCheckFactoryTest extends MediaWikiIntegrationTestCase {
 
 	use MockServiceDependenciesTrait;
 
+	/** @var HttpRequestFactory */
 	private $fakeHTTP;
+	/** @var WANObjectCache */
 	private $fakeWAN;
 
 	protected function setUp(): void {
@@ -32,8 +34,14 @@ class InputCheckFactoryTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public function testNewMathoidChecker() {
-		$checker = $this->newServiceInstance( InputCheckFactory::class, [] )
-			->newMathoidChecker( 'FORMULA', 'TYPE' );
+		$checker = $this->newServiceInstance( InputCheckFactory::class, [
+			'options' => new ServiceOptions( InputCheckFactory::CONSTRUCTOR_OPTIONS, [
+				'MathMathMLUrl' => 'something',
+				'MathTexVCService' => 'mathoid',
+				'MathLaTeXMLTimeout' => 240
+			] )
+		] )
+			->newMathoidChecker( 'FORMULA', 'TYPE', false );
 		$this->assertInstanceOf( MathoidChecker::class, $checker );
 	}
 

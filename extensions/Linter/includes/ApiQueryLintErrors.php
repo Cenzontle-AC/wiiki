@@ -20,49 +20,67 @@
 
 namespace MediaWiki\Linter;
 
-use ApiBase;
-use ApiQuery;
-use ApiQueryBase;
-use ApiResult;
+use MediaWiki\Api\ApiBase;
+use MediaWiki\Api\ApiQuery;
+use MediaWiki\Api\ApiQueryBase;
+use MediaWiki\Api\ApiResult;
 use MediaWiki\Title\Title;
 use Wikimedia\ParamValidator\ParamValidator;
 use Wikimedia\ParamValidator\TypeDef\IntegerDef;
 
 class ApiQueryLintErrors extends ApiQueryBase {
+	private CategoryManager $categoryManager;
+
 	/**
 	 * @param ApiQuery $queryModule
 	 * @param string $moduleName
+	 * @param CategoryManager $categoryManager
 	 */
-	public function __construct( ApiQuery $queryModule, $moduleName ) {
+	public function __construct(
+		ApiQuery $queryModule,
+		string $moduleName,
+		CategoryManager $categoryManager
+	) {
 		parent::__construct( $queryModule, $moduleName, 'lnt' );
+		$this->categoryManager = $categoryManager;
 	}
 
 	public function execute() {
 		$params = $this->extractRequestParams();
-		$categoryMgr = new CategoryManager();
 
 		$this->requireMaxOneParameter( $params, 'pageid', 'title' );
 		$this->requireMaxOneParameter( $params, 'namespace', 'title' );
 
+		$useIndex = true;
+		$categories = $params['categories'];
+		if ( !$categories ) {
+			$categories = $this->categoryManager->getVisibleCategories();
+		}
+		if ( count( $categories ) > 1 ) {
+			$useIndex = false;
+		}
 		$this->addTables( 'linter' );
-		$this->addWhereFld( 'linter_cat', array_values( $categoryMgr->getCategoryIds(
-			$params['categories']
+		$this->addWhereFld( 'linter_cat', array_values( $this->categoryManager->getCategoryIds(
+			$categories
 		) ) );
 		$db = $this->getDB();
 		if ( $params['from'] !== null ) {
-			$this->addWhere( 'linter_id >= ' . $db->addQuotes( $params['from'] ) );
+			$this->addWhere( $db->expr( "linter_id", '>=', $params['from'] ) );
 		}
 		if ( $params['pageid'] !== null ) {
 			// This can be an array or a single pageid
 			$this->addWhereFld( 'linter_page', $params['pageid'] );
+			$useIndex = false;
 		}
 		if ( $params['namespace'] !== null ) {
 			$this->addWhereFld( 'page_namespace', $params['namespace'] );
+			$useIndex = false;
 		}
 		if ( $params['title'] !== null ) {
 			$title = $this->getTitleFromTitleOrPageId( [ 'title' => $params['title'] ] );
 			$this->addWhereFld( 'page_namespace', $title->getNamespace() );
 			$this->addWhereFld( 'page_title', $title->getDBkey() );
+			$useIndex = false;
 		}
 		$this->addTables( 'page' );
 		$this->addJoinConds( [ 'page' => [ 'INNER JOIN', 'page_id=linter_page' ] ] );
@@ -71,6 +89,10 @@ class ApiQueryLintErrors extends ApiQueryBase {
 			'linter_start', 'linter_end',
 			'page_namespace', 'page_title',
 		] );
+		if ( $useIndex ) {
+			// T200517#10236299: Force the use of the category index
+			$this->addOption( 'USE INDEX', [ 'linter' => 'linter_cat_page_position' ] );
+		}
 		// Be explicit about ORDER BY
 		$this->addOption( 'ORDER BY', 'linter_id' );
 		// Add +1 to limit to know if there's another row for continuation
@@ -79,7 +101,7 @@ class ApiQueryLintErrors extends ApiQueryBase {
 		$result = $this->getResult();
 		$count = 0;
 		foreach ( $rows as $row ) {
-			$lintError = Database::makeLintError( $row );
+			$lintError = Database::makeLintError( $this->categoryManager, $row );
 			if ( !$lintError ) {
 				continue;
 			}
@@ -114,20 +136,15 @@ class ApiQueryLintErrors extends ApiQueryBase {
 
 	/** @inheritDoc */
 	public function getAllowedParams() {
-		$visibleCats = ( new CategoryManager() )->getVisibleCategories();
-		$invisibleCats = ( new CategoryManager() )->getinvisibleCategories();
+		$visibleCats = $this->categoryManager->getVisibleCategories();
+		$invisibleCats = $this->categoryManager->getinvisibleCategories();
+		$categories = array_merge( $visibleCats, $invisibleCats );
 		return [
 			'categories' => [
-				ParamValidator::PARAM_TYPE => $visibleCats,
+				ParamValidator::PARAM_TYPE => $categories,
 				ParamValidator::PARAM_ISMULTI => true,
 				// Default is to show all categories
 				ParamValidator::PARAM_DEFAULT => implode( '|', $visibleCats ),
-			],
-			'invisible-categories' => [
-				ParamValidator::PARAM_TYPE => $invisibleCats,
-				ParamValidator::PARAM_ISMULTI => true,
-				// Default is to show all categories
-				ParamValidator::PARAM_DEFAULT => implode( '|', $invisibleCats ),
 			],
 			'limit' => [
 				ParamValidator::PARAM_DEFAULT => 10,

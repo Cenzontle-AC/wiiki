@@ -2,15 +2,14 @@
 
 namespace MediaWiki\Extension\DiscussionTools\Tests;
 
-use FormatJson;
-use GenderCache;
-use MediaWiki\Config\Config;
+use MediaWiki\Cache\GenderCache;
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Json\FormatJson;
 use MediaWiki\MainConfigNames;
-use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\OutputPage;
+use MediaWiki\Parser\ParserOutput;
 use MediaWiki\Title\Title;
-use MediaWiki\User\UserIdentity;
-use ParserOutput;
+use MediaWiki\User\User;
 use Skin;
 use Wikimedia\TestingAccessWrapper;
 
@@ -21,39 +20,70 @@ use Wikimedia\TestingAccessWrapper;
 class CommentFormatterTest extends IntegrationTestCase {
 
 	/**
+	 * @dataProvider provideIsLanguageRequiringReplyIcon
+	 */
+	public function testIsLanguageRequiringReplyIcon(
+		string $langCode, bool $expected, ?array $config = null
+	): void {
+		$lang = $this->getServiceContainer()->getLanguageFactory()->getLanguage( $langCode );
+		if ( $config ) {
+			$this->overrideConfigValues( [
+				'DiscussionTools_visualenhancements_reply_icon_languages' => $config
+			] );
+		}
+		$actual = MockCommentFormatter::isLanguageRequiringReplyIcon( $lang );
+		static::assertEquals( $expected, $actual, $langCode );
+	}
+
+	public static function provideIsLanguageRequiringReplyIcon(): array {
+		return [
+			[ 'zh', true ],
+			[ 'zh-hant', true ],
+			[ 'ar', true ],
+			[ 'arz', true ],
+			[ 'arz', false, [ 'ar' => true, 'arz' => false ] ],
+			[ 'en', false ],
+			[ 'he', false ],
+		];
+	}
+
+	/**
 	 * @dataProvider provideAddDiscussionToolsInternal
 	 */
 	public function testAddDiscussionToolsInternal(
-		string $name, string $titleText, string $dom, string $expected, string $config, string $data, bool $isMobile
+		string $name, string $titleText, string $dom, string $expected, string $config, string $data,
+		bool $isMobile, bool $useButtons
 	): void {
-		$this->setService( 'GenderCache', $this->createMock( GenderCache::class ) );
+		$this->setService( 'GenderCache', $this->createNoOpMock( GenderCache::class ) );
 		$dom = static::getHtml( $dom );
 		$expectedPath = $expected;
 		$expected = static::getText( $expectedPath );
 		$config = static::getJson( $config );
 		$data = static::getJson( $data );
 
-		$this->setupEnv( $config, $data );
 		$this->overrideConfigValues( [
+			// Consistent defaults for generating canonical URLs
+			MainConfigNames::Server => 'https://example.org',
+			MainConfigNames::CanonicalServer => 'https://example.org',
+			MainConfigNames::ArticlePath => '/wiki/$1',
 			MainConfigNames::ScriptPath => '/w',
 			MainConfigNames::Script => '/w/index.php',
 		] );
 
 		$title = Title::newFromText( $titleText );
 		$subscriptionStore = new MockSubscriptionStore();
-		$user = $this->createMock( UserIdentity::class );
-		$qqxLang = MediaWikiServices::getInstance()->getLanguageFactory()->getLanguage( 'qqx' );
+		$user = $this->createMock( User::class );
+		$qqxLang = $this->getServiceContainer()->getLanguageFactory()->getLanguage( 'qqx' );
 		$skin = $this->createMock( Skin::class );
-		$outputPage = $this->createMock( OutputPage::class );
-		$outputPage->method( 'getConfig' )->willReturn( $this->createMock( Config::class ) );
+		$skin->method( 'getSkinName' )->willReturn( 'minerva' );
+		$outputPage = $this->createMock( IContextSource::class );
 		$outputPage->method( 'getTitle' )->willReturn( $title );
 		$outputPage->method( 'getUser' )->willReturn( $user );
 		$outputPage->method( 'getLanguage' )->willReturn( $qqxLang );
 		$outputPage->method( 'getSkin' )->willReturn( $skin );
 		$outputPage->method( 'msg' )->willReturn( 'a label' );
 
-		MockCommentFormatter::$parser = static::createParser( $data );
-
+		MockCommentFormatter::$parser = $this->createParser( $config, $data );
 		$commentFormatter = TestingAccessWrapper::newFromClass( MockCommentFormatter::class );
 
 		$pout = new ParserOutput();
@@ -70,12 +100,12 @@ class CommentFormatterTest extends IntegrationTestCase {
 			FormatJson::encode( $pout->getJsConfigVars(), "\t", FormatJson::ALL_OK ) .
 			"\n</pre>";
 
-		\OutputPage::setupOOUI();
+		OutputPage::setupOOUI();
 
 		$actual = $preprocessed;
 
 		$actual = MockCommentFormatter::postprocessTopicSubscription(
-			$actual, $outputPage, $subscriptionStore, $isMobile
+			$actual, $outputPage, $subscriptionStore, $isMobile, $useButtons
 		);
 
 		$actual = MockCommentFormatter::postprocessVisualEnhancements(
@@ -83,7 +113,7 @@ class CommentFormatterTest extends IntegrationTestCase {
 		);
 
 		$actual = MockCommentFormatter::postprocessReplyTool(
-			$actual, $outputPage, $isMobile
+			$actual, $outputPage, $isMobile, $useButtons
 		);
 
 		// OOUI ID's are non-deterministic, so strip them from test output
@@ -103,8 +133,14 @@ class CommentFormatterTest extends IntegrationTestCase {
 	public static function provideAddDiscussionToolsInternal() {
 		foreach ( static::getJson( '../cases/formatted.json' ) as $case ) {
 			// Run each test case twice, for desktop and mobile output
-			yield array_merge( $case, [ 'expected' => $case['expected']['desktop'], 'isMobile' => false ] );
-			yield array_merge( $case, [ 'expected' => $case['expected']['mobile'], 'isMobile' => true ] );
+			yield array_merge( $case,
+				[ 'expected' => $case['expected']['desktop'], 'isMobile' => false, 'useButtons' => true ] );
+			yield array_merge( $case,
+				[ 'expected' => $case['expected']['mobile'], 'isMobile' => true, 'useButtons' => true ] );
+
+			// Test the legacy output without visual enhancements (only available on desktop)
+			yield array_merge( $case,
+				[ 'expected' => $case['expected']['legacy'], 'isMobile' => false, 'useButtons' => false ] );
 		}
 	}
 

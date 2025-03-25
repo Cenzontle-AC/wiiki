@@ -9,7 +9,7 @@ use MediaWiki\Extension\Notifications\Hooks\HookRunner;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\Notifications\Model\Notification;
 use MediaWiki\MediaWikiServices;
-use User;
+use MediaWiki\User\User;
 use UserMailer;
 
 class Notifier {
@@ -80,6 +80,10 @@ class Notifier {
 					return false;
 				}
 			}
+		} elseif ( $event->getExtraParam( 'noemail' ) ) {
+			// Could be set for API triggered notifications were email is not
+			// requested in API request params
+			return false;
 		}
 
 		$hookRunner = new HookRunner( $services->getHookContainer() );

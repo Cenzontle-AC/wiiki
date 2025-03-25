@@ -2,34 +2,34 @@
 
 namespace MediaWiki\Extension\SpamBlacklist;
 
-use ApiMessage;
-use Content;
-use Html;
-use IContextSource;
 use LogicException;
+use MediaWiki\Api\ApiMessage;
+use MediaWiki\Content\Content;
 use MediaWiki\Content\IContentHandlerFactory;
 use MediaWiki\Content\Renderer\ContentRenderer;
+use MediaWiki\Context\IContextSource;
 use MediaWiki\EditPage\EditPage;
 use MediaWiki\ExternalLinks\LinkFilter;
 use MediaWiki\Hook\EditFilterHook;
 use MediaWiki\Hook\EditFilterMergedContentHook;
 use MediaWiki\Hook\UploadVerifyUploadHook;
+use MediaWiki\Html\Html;
+use MediaWiki\Message\Message;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Parser\ParserOutput;
 use MediaWiki\Permissions\PermissionManager;
 use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\Status\Status;
 use MediaWiki\Storage\EditResult;
 use MediaWiki\Storage\Hook\PageSaveCompleteHook;
 use MediaWiki\Storage\Hook\ParserOutputStashForEditHook;
 use MediaWiki\Storage\PageEditStash;
 use MediaWiki\User\Hook\UserCanSendEmailHook;
+use MediaWiki\User\User;
 use MediaWiki\User\UserIdentity;
-use Message;
-use MessageSpecifier;
-use ParserOptions;
-use ParserOutput;
-use Status;
 use UploadBase;
-use User;
 use Wikimedia\Assert\PreconditionException;
+use Wikimedia\Message\MessageSpecifier;
 use WikiPage;
 
 /**
@@ -232,7 +232,7 @@ class Hooks implements
 				"</code>\n";
 			$hookError =
 				Html::errorBox(
-					wfMessage( 'spam-invalid-lines' )->numParams( $badLines )->text() . "<br />" .
+					wfMessage( 'spam-invalid-lines' )->numParams( $badLines )->parse() . "<br />" .
 					$badList
 					) .
 					"\n<br clear='all' />\n";

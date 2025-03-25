@@ -8,16 +8,16 @@
 
 namespace MediaWiki\Extension\WikiEditor;
 
-use ApiMessage;
 use Article;
-use Content;
-use ExtensionRegistry;
+use MediaWiki\Api\ApiMessage;
 use MediaWiki\Cache\CacheKeyHelper;
 use MediaWiki\ChangeTags\Hook\ChangeTagsListActiveHook;
 use MediaWiki\ChangeTags\Hook\ListDefinedTagsHook;
 use MediaWiki\Config\Config;
+use MediaWiki\Content\Content;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\EditPage\EditPage;
-use MediaWiki\Extension\DiscussionTools\Hooks as DiscussionToolsHooks;
+use MediaWiki\Extension\ConfirmEdit\Hooks as ConfirmEditHooks;
 use MediaWiki\Extension\EventLogging\EventLogging;
 use MediaWiki\Hook\EditPage__attemptSave_afterHook;
 use MediaWiki\Hook\EditPage__attemptSaveHook;
@@ -29,17 +29,18 @@ use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\OutputPage;
 use MediaWiki\Preferences\Hook\GetPreferencesHook;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Request\WebRequest;
 use MediaWiki\ResourceLoader as RL;
 use MediaWiki\Status\Status;
+use MediaWiki\User\Options\UserOptionsLookup;
 use MediaWiki\User\User;
 use MediaWiki\User\UserEditTracker;
-use MediaWiki\User\UserOptionsLookup;
 use MediaWiki\WikiMap\WikiMap;
 use MessageLocalizer;
+use MobileContext;
 use MWCryptRand;
 use RecentChange;
-use RequestContext;
 use WikimediaEvents\WikimediaEventsHooks;
 
 /**
@@ -63,28 +64,21 @@ class Hooks implements
 	/** @var string[] */
 	private static $tags = [ 'wikieditor' ];
 
-	/** @var Config */
-	private $config;
+	private Config $config;
+	private UserEditTracker $userEditTracker;
+	private UserOptionsLookup $userOptionsLookup;
+	private ?MobileContext $mobileContext;
 
-	/** @var UserEditTracker */
-	private $userEditTracker;
-
-	/** @var UserOptionsLookup */
-	private $userOptionsLookup;
-
-	/**
-	 * @param Config $config
-	 * @param UserEditTracker $userEditTracker
-	 * @param UserOptionsLookup $userOptionsLookup
-	 */
 	public function __construct(
 		Config $config,
 		UserEditTracker $userEditTracker,
-		UserOptionsLookup $userOptionsLookup
+		UserOptionsLookup $userOptionsLookup,
+		?MobileContext $mobileContext
 	) {
 		$this->config = $config;
 		$this->userEditTracker = $userEditTracker;
 		$this->userOptionsLookup = $userOptionsLookup;
+		$this->mobileContext = $mobileContext;
 	}
 
 	/**
@@ -93,7 +87,7 @@ class Hooks implements
 	 * @param string $sessionId
 	 * @return bool Whether to sample the session
 	 */
-	protected function inEventSample( $sessionId ) {
+	protected function inEventSample( string $sessionId ): bool {
 		// Sample 6.25%
 		$samplingRate = $this->config->has( 'WMESchemaEditAttemptStepSamplingRate' ) ?
 			$this->config->get( 'WMESchemaEditAttemptStepSamplingRate' ) : 0.0625;
@@ -120,7 +114,11 @@ class Hooks implements
 	 * @param array $data Data to log for this action
 	 * @return void
 	 */
-	public function doEventLogging( $action, $article, $data = [] ) {
+	public function doEventLogging(
+		string $action,
+		Article $article,
+		array $data = []
+	): void {
 		if ( defined( 'MW_PHPUNIT_TEST' ) ) {
 			return;
 		}
@@ -129,9 +127,8 @@ class Hooks implements
 		if ( !$extensionRegistry->isLoaded( 'EventLogging' ) || !$extensionRegistry->isLoaded( 'WikimediaEvents' ) ) {
 			return;
 		}
-		if ( $extensionRegistry->isLoaded( 'MobileFrontend' ) ) {
-			$mobFrontContext = MediaWikiServices::getInstance()->getService( 'MobileFrontend.Context' );
-			if ( $mobFrontContext->shouldDisplayMobileView() ) {
+		if ( $extensionRegistry->isLoaded( 'MobileFrontend' ) && $this->mobileContext ) {
+			if ( $this->mobileContext->shouldDisplayMobileView() ) {
 				// on a MobileFrontend page the logging should be handled by it
 				return;
 			}
@@ -167,18 +164,9 @@ class Hooks implements
 			'wiki' => WikiMap::getCurrentWikiId(),
 		] + $data;
 
-		$bucket = ExtensionRegistry::getInstance()->isLoaded( 'DiscussionTools' ) ?
-			// @phan-suppress-next-line PhanUndeclaredClassMethod
-			DiscussionToolsHooks\HookUtils::determineUserABTestBucket( $user ) : false;
-		if ( $bucket ) {
-			$data['bucket'] = $bucket;
-		}
-
 		if ( $user->isAnon() ) {
 			$data['user_class'] = 'IP';
 		}
-
-		$this->doMetricsPlatformLogging( $action, $data );
 
 		if ( !$inSample && !$shouldOversample ) {
 			return;
@@ -187,46 +175,10 @@ class Hooks implements
 		EventLogging::submit(
 			'eventlogging_EditAttemptStep',
 			[
-				'$schema' => '/analytics/legacy/editattemptstep/2.0.0',
+				'$schema' => '/analytics/legacy/editattemptstep/2.0.2',
 				'event' => $data,
 			]
 		);
-	}
-
-	/**
-	 * @see https://phabricator.wikimedia.org/T309013
-	 * @see https://phabricator.wikimedia.org/T309985
-	 */
-	private function doMetricsPlatformLogging( string $action, array $data ): void {
-		unset( $data['version'] );
-		unset( $data['action'] );
-
-		// Sampling rate (and therefore whether a stream should oversample) is captured in
-		// the stream config ($wgEventStreams).
-		unset( $data['is_oversample'] );
-		unset( $data['session_token'] );
-
-		// Platform can be derived from the agent_client_platform_family context attribute
-		// mixed in by the JavaScript Metrics Platform Client. The context attribute will be
-		// "desktop_browser" or "mobile_browser" depending on whether the MobileFrontend
-		// extension has signalled that it is enabled.
-		unset( $data['platform'] );
-
-		unset( $data['page_id'] );
-		unset( $data['page_title'] );
-		unset( $data['page_ns'] );
-
-		// If the revision ID can be fetched (i.e. it is a positive integer), then it will be
-		//mixed in by the Metrics Platform Client.
-		if ( $data['revision_id'] ) {
-			unset( $data['revision_id'] );
-		}
-
-		unset( $data['user_id'] );
-		unset( $data['user_editcount'] );
-		unset( $data['mw_version'] );
-
-		EventLogging::submitMetricsEvent( 'eas.wt.' . $action, $data );
 	}
 
 	/**
@@ -240,7 +192,12 @@ class Hooks implements
 	 * @param string $sessionId Session identifier
 	 * @return bool Whether the event was logged or not.
 	 */
-	public function doVisualEditorFeatureUseLogging( $feature, $action, $article, $sessionId ) {
+	public function doVisualEditorFeatureUseLogging(
+		string $feature,
+		string $action,
+		Article $article,
+		string $sessionId
+	): bool {
 		$extensionRegistry = ExtensionRegistry::getInstance();
 		if ( !$extensionRegistry->isLoaded( 'EventLogging' ) || !$extensionRegistry->isLoaded( 'WikimediaEvents' ) ) {
 			return false;
@@ -265,13 +222,6 @@ class Hooks implements
 			'user_is_temp' => $user->isTemp(),
 			'user_editcount' => $editCount ?: 0,
 		];
-
-		$bucket = ExtensionRegistry::getInstance()->isLoaded( 'DiscussionTools' ) ?
-			// @phan-suppress-next-line PhanUndeclaredClassMethod
-			DiscussionToolsHooks\HookUtils::determineUserABTestBucket( $user ) : false;
-		if ( $bucket ) {
-			$data['bucket'] = $bucket;
-		}
 
 		// NOTE: The 'VisualEditorFeatureUse' event was migrated to the Event Platform and is no
 		//  longer using the legacy EventLogging schema from metawiki. $revId is actually
@@ -343,25 +293,6 @@ class Hooks implements
 
 			$this->doEventLogging( 'init', $article, $data );
 		}
-	}
-
-	/**
-	 * Deprecated static alias for onEditPage__showEditForm_initial
-	 *
-	 * Adds the modules to the edit form
-	 *
-	 * @deprecated since 1.38
-	 * @param EditPage $editPage the current EditPage object.
-	 * @param OutputPage $outputPage object.
-	 */
-	public static function editPageShowEditFormInitial( EditPage $editPage, OutputPage $outputPage ) {
-		wfDeprecated( __METHOD__, '1.38' );
-		$services = MediaWikiServices::getInstance();
-		( new self(
-			$services->getMainConfig(),
-			$services->getUserEditTracker(),
-			$services->getUserOptionsLookup()
-		) )->onEditPage__showEditForm_initial( $editPage, $outputPage );
 	}
 
 	/**
@@ -437,7 +368,7 @@ class Hooks implements
 	 * @param Config $config
 	 * @return array
 	 */
-	public static function getModuleData( RL\Context $context, Config $config ) {
+	public static function getModuleData( RL\Context $context, Config $config ): array {
 		return [
 			// expose magic words for use by the wikieditor toolbar
 			'magicWords' => self::getMagicWords(),
@@ -452,7 +383,7 @@ class Hooks implements
 	 * @param Config $config
 	 * @return array
 	 */
-	public static function getModuleDataSummary( RL\Context $context, Config $config ) {
+	public static function getModuleDataSummary( RL\Context $context, Config $config ): array {
 		return [
 			'magicWords' => self::getMagicWords(),
 			'signature' => self::getSignatureMessage( $context, true ),
@@ -466,7 +397,7 @@ class Hooks implements
 	 * @param bool $raw
 	 * @return string
 	 */
-	private static function getSignatureMessage( MessageLocalizer $ml, $raw = false ) {
+	private static function getSignatureMessage( MessageLocalizer $ml, bool $raw = false ): string {
 		$msg = $ml->msg( 'sig-text' )->params( '~~~~' )->inContentLanguage();
 		return $raw ? $msg->plain() : $msg->text();
 	}
@@ -475,7 +406,7 @@ class Hooks implements
 	 * Expose useful magic words which are used by the wikieditor toolbar
 	 * @return string[][]
 	 */
-	private static function getMagicWords() {
+	private static function getMagicWords(): array {
 		$requiredMagicWords = [
 			'redirect',
 			'img_alt',
@@ -500,7 +431,7 @@ class Hooks implements
 	 * @param WebRequest $request
 	 * @return string
 	 */
-	private static function getEditingStatsId( WebRequest $request ) {
+	private static function getEditingStatsId( WebRequest $request ): string {
 		$fromRequest = $request->getRawVal( 'editingStatsId' );
 		if ( $fromRequest !== null ) {
 			return $fromRequest;
@@ -584,7 +515,7 @@ class Hooks implements
 				if ( ExtensionRegistry::getInstance()->isLoaded( 'ConfirmEdit' ) ) {
 					$key = CacheKeyHelper::getKeyForPage( $wikiPage );
 					/** @var SimpleCaptcha $captcha */
-					$captcha = \ConfirmEditHooks::getInstance();
+					$captcha = ConfirmEditHooks::getInstance();
 					$activatedCaptchas = $captcha->getActivatedCaptchas();
 					if ( isset( $activatedCaptchas[$key] ) ) {
 						// TODO: :(
@@ -635,7 +566,7 @@ class Hooks implements
 	/**
 	 * @param string[] &$tags
 	 */
-	protected function registerTags( &$tags ) {
+	protected function registerTags( array &$tags ): void {
 		$tags = array_merge( $tags, static::$tags );
 	}
 
@@ -648,6 +579,5 @@ class Hooks implements
 		if ( $request->getRawVal( 'wikieditorUsed' ) === 'yes' ) {
 			$recentChange->addTags( 'wikieditor' );
 		}
-		return true;
 	}
 }

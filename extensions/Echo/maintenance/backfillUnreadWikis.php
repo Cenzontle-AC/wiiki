@@ -4,7 +4,9 @@ use MediaWiki\Extension\Notifications\AttributeManager;
 use MediaWiki\Extension\Notifications\DbFactory;
 use MediaWiki\Extension\Notifications\NotifUser;
 use MediaWiki\Extension\Notifications\UnreadWikis;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Maintenance\Maintenance;
+use MediaWiki\User\CentralId\CentralIdLookup;
+use MediaWiki\User\User;
 use MediaWiki\WikiMap\WikiMap;
 
 $IP = getenv( 'MW_INSTALL_PATH' );
@@ -25,7 +27,7 @@ class BackfillUnreadWikis extends Maintenance {
 
 	public function execute() {
 		$dbFactory = DbFactory::newFromDefault();
-		$lookup = MediaWikiServices::getInstance()->getCentralIdLookup();
+		$lookup = $this->getServiceContainer()->getCentralIdLookup();
 
 		$rebuild = $this->hasOption( 'rebuild' );
 		if ( $rebuild ) {
@@ -39,7 +41,7 @@ class BackfillUnreadWikis extends Maintenance {
 		} else {
 			$userQuery = User::getQueryInfo();
 			$iterator = new BatchRowIterator(
-				wfGetDB( DB_REPLICA ), $userQuery['tables'], 'user_id', $this->getBatchSize()
+				$this->getReplicaDB(), $userQuery['tables'], 'user_id', $this->getBatchSize()
 			);
 			$iterator->setFetchColumns( $userQuery['fields'] );
 			$iterator->addJoinConditions( $userQuery['joins'] );

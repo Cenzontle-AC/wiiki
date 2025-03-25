@@ -4,14 +4,11 @@
 
 namespace MediaWiki\Extension\ConfirmEdit;
 
-use ApiBase;
-use Content;
-use ExtensionRegistry;
-use Html;
-use HTMLForm;
-use IContextSource;
 use MailAddress;
+use MediaWiki\Api\ApiBase;
 use MediaWiki\Api\Hook\APIGetAllowedParamsHook;
+use MediaWiki\Content\Content;
+use MediaWiki\Context\IContextSource;
 use MediaWiki\EditPage\EditPage;
 use MediaWiki\Extension\ConfirmEdit\SimpleCaptcha\SimpleCaptcha;
 use MediaWiki\Hook\AlternateEditPreviewHook;
@@ -20,23 +17,26 @@ use MediaWiki\Hook\EditPage__showEditForm_fieldsHook;
 use MediaWiki\Hook\EditPageBeforeEditButtonsHook;
 use MediaWiki\Hook\EmailUserFormHook;
 use MediaWiki\Hook\EmailUserHook;
-use MediaWiki\MediaWikiServices;
+use MediaWiki\Html\Html;
+use MediaWiki\HTMLForm\HTMLForm;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Parser\ParserOutput;
 use MediaWiki\Permissions\Hook\TitleReadWhitelistHook;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\ResourceLoader\Hook\ResourceLoaderRegisterModulesHook;
 use MediaWiki\ResourceLoader\ResourceLoader;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\SpecialPage\Hook\AuthChangeFormFieldsHook;
+use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Status\Status;
 use MediaWiki\Storage\EditResult;
 use MediaWiki\Storage\Hook\PageSaveCompleteHook;
 use MediaWiki\Title\Title;
+use MediaWiki\User\User;
 use MediaWiki\User\UserIdentity;
-use MessageSpecifier;
-use OutputPage;
-use ParserOutput;
-use SpecialPage;
-use Status;
-use User;
 use Wikimedia\IPUtils;
+use Wikimedia\Message\MessageSpecifier;
+use Wikimedia\ObjectCache\WANObjectCache;
 use WikiPage;
 
 class Hooks implements
@@ -53,7 +53,16 @@ class Hooks implements
 	AuthChangeFormFieldsHook
 {
 
+	/** @var bool */
 	protected static $instanceCreated = false;
+
+	private WANObjectCache $cache;
+
+	public function __construct(
+		WANObjectCache $cache
+	) {
+		$this->cache = $cache;
+	}
 
 	/**
 	 * Get the global Captcha instance
@@ -84,7 +93,12 @@ class Hooks implements
 	public function onEditFilterMergedContent( IContextSource $context, Content $content, Status $status,
 		$summary, User $user, $minorEdit
 	) {
-		return self::getInstance()->confirmEditMerged( $context, $content, $status, $summary,
+		$simpleCaptcha = self::getInstance();
+		// Set a flag indicating that ConfirmEdit's implementation of
+		// EditFilterMergedContent ran. This can be checked by other extensions
+		// e.g. AbuseFilter.
+		$simpleCaptcha->setEditFilterMergedContentHandlerInvoked();
+		return $simpleCaptcha->confirmEditMerged( $context, $content, $status, $summary,
 			$user, $minorEdit );
 	}
 
@@ -109,8 +123,7 @@ class Hooks implements
 	) {
 		$title = $wikiPage->getTitle();
 		if ( $title->getText() === 'Captcha-ip-whitelist' && $title->getNamespace() === NS_MEDIAWIKI ) {
-			$cache = MediaWikiServices::getInstance()->getMainWANObjectCache();
-			$cache->delete( $cache->makeKey( 'confirmedit', 'ipwhitelist' ) );
+			$this->cache->delete( $this->cache->makeKey( 'confirmedit', 'ipwhitelist' ) );
 		}
 
 		return true;
@@ -331,7 +344,6 @@ class Hooks implements
 				'styles' => 'resources/libs/ext.confirmEdit.CaptchaInputWidget.less',
 				'messages' => $messages,
 				'dependencies' => 'oojs-ui-core',
-				'targets' => [ 'desktop', 'mobile' ],
 			]
 		] );
 	}

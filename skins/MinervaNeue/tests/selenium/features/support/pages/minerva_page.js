@@ -14,7 +14,9 @@ const { Page } = require( './mw_core_pages' );
 
 class MinervaPage extends Page {
 
-	get title() { return browser.getTitle(); }
+	get title() {
+		return browser.getTitle();
+	}
 
 	/**
 	 * Opens a page if it isn't already open.
@@ -67,9 +69,7 @@ class MinervaPage extends Page {
 
 	waitUntilResourceLoaderModuleReady( moduleName ) {
 		browser.waitUntil( () => {
-			const state = browser.execute( ( m ) => {
-				return mw.loader.getState( m );
-			}, moduleName );
+			const state = browser.execute( ( m ) => mw.loader.getState( m ), moduleName );
 			return state === 'ready';
 		} );
 	}

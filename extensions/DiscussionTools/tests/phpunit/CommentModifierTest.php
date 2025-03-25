@@ -3,7 +3,6 @@
 namespace MediaWiki\Extension\DiscussionTools\Tests;
 
 use MediaWiki\Extension\DiscussionTools\CommentModifier;
-use MediaWiki\MediaWikiServices;
 use Wikimedia\Parsoid\Utils\DOMCompat;
 use Wikimedia\Parsoid\Utils\DOMUtils;
 use Wikimedia\Parsoid\Wt2Html\XMLSerializer;
@@ -29,13 +28,12 @@ class CommentModifierTest extends IntegrationTestCase {
 		$config = static::getJson( $config );
 		$data = static::getJson( $data );
 
-		$this->setupEnv( $config, $data );
-		$title = MediaWikiServices::getInstance()->getTitleParser()->parseTitle( $title );
+		$title = $this->createTitleParser( $config )->parseTitle( $title );
 
 		$doc = static::createDocument( $dom );
 		$container = static::getThreadContainer( $doc );
 
-		$threadItemSet = static::createParser( $data )->parse( $container, $title );
+		$threadItemSet = $this->createParser( $config, $data )->parse( $container, $title );
 		$comments = $threadItemSet->getCommentItems();
 
 		foreach ( $comments as $comment ) {
@@ -79,13 +77,12 @@ class CommentModifierTest extends IntegrationTestCase {
 		$config = static::getJson( $config );
 		$data = static::getJson( $data );
 
-		$this->setupEnv( $config, $data );
-		$title = MediaWikiServices::getInstance()->getTitleParser()->parseTitle( $title );
+		$title = $this->createTitleParser( $config )->parseTitle( $title );
 
 		$doc = static::createDocument( $dom );
 		$container = static::getThreadContainer( $doc );
 
-		$threadItemSet = static::createParser( $data )->parse( $container, $title );
+		$threadItemSet = $this->createParser( $config, $data )->parse( $container, $title );
 		$comments = $threadItemSet->getCommentItems();
 
 		foreach ( $comments as $comment ) {
@@ -125,6 +122,23 @@ class CommentModifierTest extends IntegrationTestCase {
 
 	public static function provideUnwrapList(): array {
 		return static::getJson( '../cases/unwrap.json' );
+	}
+
+	/**
+	 * @dataProvider provideUnwrapFragment
+	 */
+	public function testUnwrapFragment( string $html, string $expected ): void {
+		$doc = static::createDocument( '' );
+		$container = DOMUtils::parseHTMLToFragment( $doc, $html );
+		CommentModifier::unwrapFragment( $container );
+		static::assertEquals( $expected, DOMUtils::getFragmentInnerHTML( $container ) );
+	}
+
+	public static function provideUnwrapFragment() {
+		yield [
+			"<ul><li>aaa</li></ul>\n<dl><dd>bbb</dd></dl>",
+			"<p>aaa</p>\n<p>bbb</p>",
+		];
 	}
 
 	/**

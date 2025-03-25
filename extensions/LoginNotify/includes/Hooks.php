@@ -12,17 +12,16 @@ use MediaWiki\Auth\AuthenticationResponse;
 use MediaWiki\Auth\Hook\AuthManagerLoginAuthenticateAuditHook;
 use MediaWiki\Auth\Hook\LocalUserCreatedHook;
 use MediaWiki\Hook\RecentChange_saveHook;
+use MediaWiki\User\User;
 use MediaWiki\User\UserFactory;
 use RecentChange;
-use User;
 
 class Hooks implements
 	AuthManagerLoginAuthenticateAuditHook,
 	LocalUserCreatedHook,
 	RecentChange_saveHook
 {
-	/** @var UserFactory */
-	private $userFactory;
+	private UserFactory $userFactory;
 
 	public function __construct( UserFactory $userFactory ) {
 		$this->userFactory = $userFactory;

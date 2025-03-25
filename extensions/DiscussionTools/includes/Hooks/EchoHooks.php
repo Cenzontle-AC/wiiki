@@ -9,8 +9,8 @@
 
 namespace MediaWiki\Extension\DiscussionTools\Hooks;
 
-use EchoUserLocator;
 use MediaWiki\Extension\DiscussionTools\Notifications\AddedTopicPresentationModel;
+use MediaWiki\Extension\DiscussionTools\Notifications\CommentThanksPresentationModel;
 use MediaWiki\Extension\DiscussionTools\Notifications\EnhancedEchoEditUserTalkPresentationModel;
 use MediaWiki\Extension\DiscussionTools\Notifications\EnhancedEchoMentionPresentationModel;
 use MediaWiki\Extension\DiscussionTools\Notifications\EventDispatcher;
@@ -20,7 +20,10 @@ use MediaWiki\Extension\Notifications\Hooks\BeforeCreateEchoEventHook;
 use MediaWiki\Extension\Notifications\Hooks\EchoGetBundleRulesHook;
 use MediaWiki\Extension\Notifications\Hooks\EchoGetEventsForRevisionHook;
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Extension\Notifications\UserLocator;
+use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Revision\RevisionRecord;
+use Wikimedia\Parsoid\Core\ResourceLimitExceededException;
 
 class EchoHooks implements
 	BeforeCreateEchoEventHook,
@@ -29,16 +32,14 @@ class EchoHooks implements
 {
 	/**
 	 * Add notification events to Echo
-	 *
-	 * @param array &$notifications
-	 * @param array &$notificationCategories
-	 * @param array &$icons
 	 */
 	public function onBeforeCreateEchoEvent(
 		array &$notifications,
 		array &$notificationCategories,
 		array &$icons
 	) {
+		// The following messages are generated upstream
+		// * echo-category-title-dt-subscription
 		$notificationCategories['dt-subscription'] = [
 			'priority' => 3,
 			'tooltip' => 'echo-pref-tooltip-dt-subscription',
@@ -54,10 +55,10 @@ class EchoHooks implements
 			// duplicate notifications for a single comment
 			'user-filters' => [
 				[
-					[ EchoUserLocator::class, 'locateFromEventExtra' ],
+					[ UserLocator::class, 'locateFromEventExtra' ],
 					[ 'mentioned-users' ]
 				],
-				[ [ EchoUserLocator::class, 'locateTalkPageOwner' ] ],
+				[ [ UserLocator::class, 'locateTalkPageOwner' ] ],
 			],
 			'presentation-model' => SubscribedNewCommentPresentationModel::class,
 			'bundle' => [
@@ -67,6 +68,8 @@ class EchoHooks implements
 			],
 		];
 
+		// The following messages are generated upstream
+		// * echo-category-title-dt-subscription-archiving
 		$notificationCategories['dt-subscription-archiving'] = [
 			'priority' => 3,
 			'tooltip' => 'echo-pref-tooltip-dt-subscription-archiving',
@@ -100,15 +103,30 @@ class EchoHooks implements
 			],
 		];
 
+		if ( ExtensionRegistry::getInstance()->isLoaded( 'Thanks' ) ) {
+			$notifications['dt-thank'] = [
+				'category' => 'edit-thank',
+				'group' => 'positive',
+				'section' => 'message',
+				'user-locators' => [
+					[
+						[ UserLocator::class, 'locateFromEventExtra' ],
+						[ 'thanked-user-id' ]
+					]
+				],
+				'presentation-model' => CommentThanksPresentationModel::class,
+				'bundle' => [
+					'web' => true,
+					'expandable' => true,
+				],
+			];
+		}
+
 		// Override default handlers
 		$notifications['edit-user-talk']['presentation-model'] = EnhancedEchoEditUserTalkPresentationModel::class;
 		$notifications['mention']['presentation-model'] = EnhancedEchoMentionPresentationModel::class;
 	}
 
-	/**
-	 * @param Event $event
-	 * @param string &$bundleString
-	 */
 	public function onEchoGetBundleRules( Event $event, string &$bundleString ) {
 		switch ( $event->getType() ) {
 			case 'dt-subscribed-new-comment':
@@ -119,13 +137,14 @@ class EchoHooks implements
 				$bundleString = $event->getType() . '-' . $event->getTitle()->getNamespace()
 					. '-' . $event->getTitle()->getDBkey();
 				break;
+			case 'dt-thank':
+				$bundleString = $event->getType() . '-' . $event->getExtraParam( 'comment-name' );
+				break;
 		}
 	}
 
 	/**
-	 * @param array &$events
-	 * @param RevisionRecord $revision
-	 * @param bool $isRevert
+	 * @throws ResourceLimitExceededException
 	 */
 	public function onEchoGetEventsForRevision( array &$events, RevisionRecord $revision, bool $isRevert ) {
 		if ( $isRevert ) {

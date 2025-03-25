@@ -47,18 +47,20 @@ module.exports = function ( grunt ) {
 		function styleTag( group, src ) {
 			const rtlFilepath = src.file.replace( /\.css$/, '.rtl.css' );
 
-			if ( grunt.file.exists( rtlFilepath ) ) {
+			const rel = src.file.endsWith( '.less' ) ? 'stylesheet/less' : 'stylesheet';
+
+			if ( rtlFilepath !== src.file && grunt.file.exists( rtlFilepath ) ) {
 				if ( !dir ) {
-					return indent + '<link rel=stylesheet href="' + pathPrefix + src.file + '" class="stylesheet-ltr' +
+					return indent + '<link rel="' + rel + '" href="' + pathPrefix + src.file + '" class="stylesheet-ltr' +
 						( group ? ' stylesheet-' + group : '' ) + '">\n' +
-						indent + '<link rel=stylesheet href="' + pathPrefix + rtlFilepath + '" class="stylesheet-rtl' +
+						indent + '<link rel="' + rel + '" href="' + pathPrefix + rtlFilepath + '" class="stylesheet-rtl' +
 						( group ? ' stylesheet-' + group : '' ) + '">';
 				} else if ( dir === 'rtl' ) {
-					return indent + '<link rel=stylesheet href="' + pathPrefix + rtlFilepath + '"' +
+					return indent + '<link rel="' + rel + '" href="' + pathPrefix + rtlFilepath + '"' +
 						( group ? ' class="stylesheet-' + group + '"' : '' ) + '>';
 				}
 			}
-			return indent + '<link rel=stylesheet href="' + pathPrefix + src.file + '"' +
+			return indent + '<link rel="' + rel + '" href="' + pathPrefix + src.file + '"' +
 				( group ? ' class="stylesheet-' + group + '"' : '' ) + '>';
 		}
 
@@ -101,9 +103,10 @@ module.exports = function ( grunt ) {
 		 * @param {Function} callback Will be called with the substituted output
 		 */
 		function placeholder( input, id, replacement, callback ) {
+			// eslint-disable-next-line security/detect-non-literal-regexp
 			const rComment = new RegExp( '<!-- ' + id + ' -->', 'm' );
 			if ( typeof replacement === 'function' ) {
-				replacement( function ( response ) {
+				replacement( ( response ) => {
 					const output = input.replace( rComment, response );
 					callback( output );
 				} );
@@ -154,7 +157,7 @@ module.exports = function ( grunt ) {
 				configScript +=
 					indent + '\tve.messagePaths = ' +
 					stringifyObject(
-						i18n.map( function ( path ) { return pathPrefix + path; } )
+						i18n.map( ( path ) => pathPrefix + path )
 					).replace( /\n/g, '\n\t' + indent ) + ';\n';
 
 				if ( langList ) {
@@ -162,10 +165,8 @@ module.exports = function ( grunt ) {
 						stringifyObject(
 							Array.from( new Set(
 								grunt.file.expand(
-									i18n.map( function ( path ) { return path + '*.json'; } )
-								).map( function ( file ) {
-									return file.split( '/' ).pop().slice( 0, -5 );
-								} )
+									i18n.map( ( path ) => path + '*.json' )
+								).map( ( file ) => file.split( '/' ).pop().slice( 0, -5 ) )
 							) ).sort()
 						).replace( /\n\t*/g, ' ' ) +
 						';\n';
@@ -188,13 +189,13 @@ module.exports = function ( grunt ) {
 
 		grunt.util.async.forEachSeries(
 			Object.keys( placeholders ),
-			function ( id, next ) {
-				placeholder( text, id.toUpperCase(), placeholders[ id ], function ( newText ) {
+			( id, next ) => {
+				placeholder( text, id.toUpperCase(), placeholders[ id ], ( newText ) => {
 					text = newText;
 					next();
 				} );
 			},
-			function () {
+			() => {
 				grunt.file.write( targetFile, text );
 				grunt.log.ok( 'File "' + targetFile + '" written.' );
 

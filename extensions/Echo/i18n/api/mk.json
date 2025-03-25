@@ -4,6 +4,14 @@
 			"Bjankuloski06"
 		]
 	},
+	"apihelp-echocreateevent-summary": "Рачно пушти известување за корисник",
+	"apihelp-echocreateevent-example": "Испрати известување",
+	"apihelp-echocreateevent-param-user": "На кој корисник да се испрати известување",
+	"apihelp-echocreateevent-param-header": "Содржина на заглавието на известувањето",
+	"apihelp-echocreateevent-param-content": "Содржина на текстот на известувањето",
+	"apihelp-echocreateevent-param-page": "Која страница да биде врска во известувањето",
+	"apihelp-echocreateevent-param-section": "Во кој оддел да се достави известувањето",
+	"apihelp-echocreateevent-param-email": "Дали воедно да се испрати е-пошта",
 	"apihelp-echomarkread-summary": "Означи ги сите известувања како прочитани за тековниот корисник.",
 	"apihelp-echomarkread-param-list": "Список на назнаки на известувањата што треба да се означат како прочитани.",
 	"apihelp-echomarkread-param-unreadlist": "Список на назнаки на известувањата што треба да се означат како непрочитани.",
@@ -33,7 +41,7 @@
 	"apihelp-echopushsubscriptions+delete-param-centraluserid": "Централната корисничка назнака поврзана со претплатата што треба да се отпријави.",
 	"apihelp-echopushsubscriptions+delete-example": "Отпријави претплата на наметнувања за тековниот корисинк.",
 	"apihelp-query+notifications-summary": "Дај ги известувањата што го исчекуваат тековниот корисник.",
-	"apihelp-query+notifications-param-prop": "Подробности што треба да се побараат.",
+	"apihelp-query+notifications-param-prop": "Поединости што треба да се побараат.",
 	"apihelp-query+notifications-param-sections": "Известителните оддели што треба да се побараат (т.е. некоја комбинација од „alert“ и „message“).",
 	"apihelp-query+notifications-param-groupbysection": "Дали да се групира исходот по оддели. Ако е зададено, секој оддел се дава посебно.",
 	"apihelp-query+notifications-param-filter": "Филтрирај ги известувањата во исходот.",

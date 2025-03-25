@@ -13,9 +13,9 @@ use MediaWiki\Hook\ParserFirstCallInitHook;
 use MediaWiki\Hook\ParserOptionsRegisterHook;
 use MediaWiki\HookContainer\HookContainer;
 use MediaWiki\Logger\LoggerFactory;
-use MediaWiki\User\UserOptionsLookup;
-use Parser;
-use ParserOptions;
+use MediaWiki\Parser\Parser;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\User\Options\UserOptionsLookup;
 
 /**
  * Hook handler for Parser hooks
@@ -77,14 +77,19 @@ class ParserHooksHandler implements
 	 * @return array|string
 	 */
 	public function mathTagHook( ?string $content, array $attributes, Parser $parser ) {
+		global $wgMathSvgRenderer;
 		$mode = $parser->getOptions()->getOption( 'math' );
+		if ( $mode === MathConfig::MODE_NATIVE_JAX ) {
+			$parser->getOutput()->addModules( [ 'ext.math.mathjax' ] );
+			$mode = MathConfig::MODE_NATIVE_MML;
+		}
 		$renderer = $this->rendererFactory->getRenderer( $content ?? '', $attributes, $mode );
 
 		$parser->getOutput()->addModuleStyles( [ 'ext.math.styles' ] );
 		if ( array_key_exists( "qid", $attributes ) ) {
 			$parser->getOutput()->addModules( [ 'ext.math.popup' ] );
 		}
-		if ( $mode == MathConfig::MODE_MATHML ) {
+		if ( $wgMathSvgRenderer === 'restbase' && $mode == MathConfig::MODE_MATHML ) {
 			$marker = Parser::MARKER_PREFIX .
 				'-postMath-' . sprintf( '%08X', $this->mathTagCounter++ ) .
 				Parser::MARKER_SUFFIX;

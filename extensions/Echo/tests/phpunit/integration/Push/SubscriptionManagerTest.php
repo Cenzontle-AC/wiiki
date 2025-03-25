@@ -1,7 +1,10 @@
 <?php
 
+namespace MediaWiki\Extension\Notifications\Test\Integration\Push;
+
 use MediaWiki\Extension\Notifications\Push\Utils;
 use MediaWiki\Extension\Notifications\Services;
+use MediaWikiIntegrationTestCase;
 use Wikimedia\TestingAccessWrapper;
 
 /**
@@ -12,9 +15,7 @@ class SubscriptionManagerTest extends MediaWikiIntegrationTestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		$this->tablesUsed[] = 'echo_push_subscription';
-		$this->tablesUsed[] = 'echo_push_provider';
-		$this->setMwGlobals( 'wgEchoPushMaxSubscriptionsPerUser', 1 );
+		$this->overrideConfigValue( 'EchoPushMaxSubscriptionsPerUser', 1 );
 	}
 
 	public function testManagePushSubscriptions(): void {

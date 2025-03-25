@@ -11,7 +11,7 @@
 	"license-name": "MIT",
 	"type": "other",
 	"requires": {
-		"MediaWiki": ">= 1.41",
+		"MediaWiki": ">= 1.43",
 		"extensions": {
 			"Echo": "*"
 		}
@@ -43,7 +43,12 @@
 		"thanks": true
 	},
 	"LogActionsHandlers": {
-		"thanks/*": "MediaWiki\\Extension\\Thanks\\ThanksLogFormatter"
+		"thanks/*": {
+			"class": "MediaWiki\\Extension\\Thanks\\ThanksLogFormatter",
+			"services": [
+				"NamespaceInfo"
+			]
+		}
 	},
 	"APIModules": {
 		"thank": {
@@ -69,19 +74,6 @@
 		"MediaWiki\\Extension\\Thanks\\": "includes/"
 	},
 	"ResourceModules": {
-		"ext.thanks.images": {
-			"class": "ResourceLoaderImageModule",
-			"selector": ".mw-ui-icon-thanks-{name}",
-			"defaultColor": "#fff",
-			"images": {
-				"userTalk": {
-					"file": {
-						"ltr": "userTalk-ltr.svg",
-						"rtl": "userTalk-rtl.svg"
-					}
-				}
-			}
-		},
 		"ext.thanks": {
 			"scripts": [
 				"ext.thanks.thank.js"
@@ -89,10 +81,6 @@
 			"dependencies": [
 				"mediawiki.cookie",
 				"mediawiki.api"
-			],
-			"targets": [
-				"desktop",
-				"mobile"
 			]
 		},
 		"ext.thanks.corethank": {
@@ -118,36 +106,6 @@
 				"mediawiki.api",
 				"jquery.confirmable",
 				"ext.thanks"
-			],
-			"targets": [
-				"desktop",
-				"mobile"
-			]
-		},
-		"ext.thanks.mobilediff": {
-			"scripts": [
-				"ext.thanks.mobilediff.js"
-			],
-			"messages": [
-				"thanks-button-action-queued",
-				"thanks-button-action-cancel",
-				"thanks-button-action-completed",
-				"thanks-button-thank",
-				"thanks-button-thanked",
-				"thanks-error-invalidrevision",
-				"thanks-error-ratelimited",
-				"thanks-error-undefined",
-				"thanks-thanked-notice"
-			],
-			"dependencies": [
-				"mobile.startup",
-				"ext.thanks.images",
-				"mediawiki.api",
-				"mediawiki.jqueryMsg"
-			],
-			"targets": [
-				"desktop",
-				"mobile"
 			]
 		},
 		"ext.thanks.flowthank": {
@@ -166,10 +124,6 @@
 				"mediawiki.jqueryMsg",
 				"mediawiki.api",
 				"ext.thanks"
-			],
-			"targets": [
-				"desktop",
-				"mobile"
 			]
 		}
 	},
@@ -181,32 +135,42 @@
 		"localBasePath": "tests/qunit",
 		"remoteExtPath": "Thanks/tests/qunit",
 		"scripts": [
-			"test_ext.thanks.thank.js",
-			"test_ext.thanks.mobilediff.js"
+			"test_ext.thanks.thank.js"
 		],
 		"dependencies": [
-			"ext.thanks",
-			"ext.thanks.mobilediff"
+			"ext.thanks"
 		]
 	},
 	"Hooks": {
 		"ApiMain::moduleManager": "main",
-		"BeforeCreateEchoEvent": "MediaWiki\\Extension\\Thanks\\Hooks::onBeforeCreateEchoEvent",
+		"BeforeCreateEchoEvent": "echo",
 		"BeforePageDisplay": "main",
-		"BeforeSpecialMobileDiffDisplay": "MediaWiki\\Extension\\Thanks\\Hooks::onBeforeSpecialMobileDiffDisplay",
 		"DiffTools": "main",
 		"DifferenceEngineViewHeader": "main",
-		"EchoGetBundleRules": "MediaWiki\\Extension\\Thanks\\Hooks::onEchoGetBundleRules",
+		"EchoGetBundleRules": "echo",
 		"GetAllBlockActions": "main",
 		"GetLogTypesOnUser": "main",
 		"HistoryTools": "main",
 		"LocalUserCreated": "main",
 		"LogEventsListLineEnding": "main",
-		"PageHistoryBeforeList": "main"
+		"PageHistoryBeforeList": "main",
+		"PageHistoryPager::doBatchLookups": "main",
+		"ChangesListInitRows": "main"
 	},
 	"HookHandlers": {
 		"main": {
-			"class": "MediaWiki\\Extension\\Thanks\\Hooks"
+			"class": "MediaWiki\\Extension\\Thanks\\Hooks",
+			"services": [
+				"MainConfig",
+				"GenderCache",
+				"PermissionManager",
+				"RevisionLookup",
+				"UserFactory",
+				"UserOptionsManager"
+			]
+		},
+		"echo": {
+			"class": "MediaWiki\\Extension\\Thanks\\EchoHooks"
 		}
 	},
 	"ServiceWiringFiles": [

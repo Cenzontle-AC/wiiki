@@ -21,10 +21,9 @@
 namespace MediaWiki\Linter;
 
 use InvalidArgumentException;
-use MediaWiki\MediaWikiServices;
 
 /**
- * Functions for lint error categories
+ * CategoryManager services: functions for lint error categories.
  */
 class CategoryManager {
 
@@ -55,12 +54,6 @@ class CategoryManager {
 	 * @var bool[]
 	 * @phan-var array<string,bool>
 	 */
-	private $parserMigrationCategories = [];
-
-	/**
-	 * @var bool[]
-	 * @phan-var array<string,bool>
-	 */
 	private $hasNameParam = [];
 
 	/**
@@ -69,16 +62,21 @@ class CategoryManager {
 	 */
 	private $hasNoParams = [];
 
-	public function __construct() {
-		$mwServices = MediaWikiServices::getInstance();
-		$linterCategories = $mwServices->getMainConfig()->get( 'LinterCategories' );
+	/**
+	 * @var bool[]
+	 * @phan-var array<string,bool>
+	 */
+	private $isEnabled = [];
 
+	/**
+	 * Do not instantiate directly: use MediaWikiServices to fetch.
+	 * @param array $linterCategories
+	 */
+	public function __construct( array $linterCategories ) {
 		foreach ( $linterCategories as $name => $info ) {
+			$this->isEnabled[$name] = $info['enabled'];
 			if ( $info['enabled'] ) {
 				$this->categories[$info['priority']][] = $name;
-			}
-			if ( $info['parser-migration'] ?? false ) {
-				$this->parserMigrationCategories[$name] = true;
 			}
 			if ( $info['has-name'] ?? false ) {
 				$this->hasNameParam[$name] = true;
@@ -104,14 +102,6 @@ class CategoryManager {
 	 * @param string $name
 	 * @return bool
 	 */
-	public function needsParserMigrationEdit( $name ) {
-		return isset( $this->parserMigrationCategories[$name] );
-	}
-
-	/**
-	 * @param string $name
-	 * @return bool
-	 */
 	public function hasNameParam( $name ) {
 		return isset( $this->hasNameParam[$name] );
 	}
@@ -122,6 +112,11 @@ class CategoryManager {
 	 */
 	public function hasNoParams( $name ) {
 		return isset( $this->hasNoParams[$name] );
+	}
+
+	public function isEnabled( string $name ): bool {
+		// Default to true so !isKnownCategory aren't dropped
+		return $this->isEnabled[$name] ?? true;
 	}
 
 	/**
@@ -166,14 +161,12 @@ class CategoryManager {
 	}
 
 	/**
-	 * Categories that are configured to be displayed to users
+	 * Categories that are configured to not be displayed to users
 	 *
 	 * @return string[]
 	 */
 	public function getInvisibleCategories() {
-		return array_merge(
-			$this->categories[self::NONE]
-		);
+		return $this->categories[self::NONE];
 	}
 
 	/**

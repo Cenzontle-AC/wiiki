@@ -10,10 +10,7 @@
 	display: flex;
 	align-items: center;
 	padding: 0.75em 0.875em;
-
-	&:hover {
-		text-decoration: none;
-	}
+	text-decoration: none;
 }
 
 .toggle-list-item__label {
@@ -28,6 +25,6 @@
 	// Always occlude the checkbox. The checkbox display cannot be none since its focus state is used
 	// for other selectors.
 	position: absolute;
-	z-index: @z-indexOccluded;
+	z-index: @z-index-occluded;
 	opacity: 0;
 }

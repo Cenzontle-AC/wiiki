@@ -7,6 +7,7 @@ if ( $IP === false ) {
 require_once "$IP/maintenance/Maintenance.php";
 
 use MediaWiki\Extension\TemplateData\TemplateDataBlob;
+use MediaWiki\Maintenance\Maintenance;
 use MediaWiki\Title\Title;
 
 /**
@@ -23,7 +24,7 @@ class ValidateTemplateData extends Maintenance {
 	}
 
 	public function execute() {
-		$db = $this->getDB( DB_REPLICA );
+		$db = $this->getReplicaDB();
 
 		$lastId = 0;
 		$rowsChecked = 0;
@@ -35,7 +36,7 @@ class ValidateTemplateData extends Maintenance {
 				->join( 'page', null, 'pp_page=page_id' )
 				->fields( [ 'pp_page', 'pp_value', 'page_namespace', 'page_title' ] )
 				->where( [
-					'pp_page > ' . $db->addQuotes( $lastId ),
+					$db->expr( 'pp_page', '>', $lastId ),
 					'pp_propname' => 'templatedata'
 				] )
 				->orderBy( 'pp_page' )

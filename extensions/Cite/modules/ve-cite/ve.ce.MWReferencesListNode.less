@@ -5,6 +5,8 @@
  * @license MIT
  */
 
+@import 'mediawiki.skin.variables.less';
+
 .ve-ce-mwReferencesListNode {
 	// Remove the styling of the preview wrapper, and any
 	// generated paragraph wrappers
@@ -19,7 +21,7 @@
 	}
 
 	&-muted {
-		color: #72777d;
+		color: @color-subtle;
 		font-style: italic;
 	}
 
@@ -34,18 +36,22 @@
 		}
 	}
 
+	.mw-references li::marker {
+		content: var( --footnote-number ) ' ';
+	}
+
 	&-missingRef {
 		-webkit-user-select: none;
 		-moz-user-select: none;
 		user-select: none;
 		pointer-events: none;
 	}
-}
 
-.ve-ce-mwReferencesListNode-highlight {
-	.ve-ce-surface-highlights-focused & {
-		background: transparent;
-		pointer-events: none;
-		box-shadow: inset 0 0 0 1px #4c76ac, 0 0 0 2px #4c76ac;
+	&-highlight {
+		.ve-ce-surface-highlights-focused & {
+			background: transparent;
+			pointer-events: none;
+			box-shadow: inset 0 0 0 1px #4c76ac, 0 0 0 2px #4c76ac;
+		}
 	}
 }

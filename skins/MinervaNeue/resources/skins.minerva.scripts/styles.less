@@ -2,7 +2,16 @@
 @import '../../minerva.less/minerva.mixins.less';
 @import 'mediawiki.mixins.less';
 @import 'toc.less';
-@import 'watchStar.less';
+@import 'page-issues/styles.less';
+@import 'Toolbar.less';
+
+.minerva-icon--download {
+	.cdx-mixin-css-icon( @cdx-icon-download, @color-subtle );
+}
+
+.minerva-icon--listBullet {
+	.cdx-mixin-css-icon( @cdx-icon-list-bullet, @color-subtle );
+}
 
 .mw-mf-page-center__mask {
 	position: absolute;
@@ -11,8 +20,8 @@
 	right: 0;
 	opacity: 0;
 	bottom: 0;
-	background: @semiTransparent;
-	z-index: @z-indexAboveContent;
+	background: @opaque;
+	z-index: @z-index-above-content;
 	// don't use display: none because it's not animatable
 	visibility: hidden;
 	transition: opacity @transition-duration-base ease-in-out;
@@ -26,17 +35,17 @@
 }
 
 // Last modified bar styles
-.last-modified-bar.active {
-	background-color: @lastModifiedBarActiveBackgroundColor;
-	color: @color-inverted;
+a.last-modified-bar.active {
+	background-color: @background-color-progressive;
+	color: @color-inverted-fixed !important;
 
 	.last-modified-text-accent,
 	a {
-		color: @color-inverted;
+		color: @color-inverted-fixed;
 	}
 
 	.minerva-icon {
-		background-color: @color-inverted;
+		background-color: @color-inverted-fixed;
 	}
 }
 

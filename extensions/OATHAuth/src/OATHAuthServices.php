@@ -42,17 +42,10 @@ class OATHAuthServices {
 	 * @param MediaWikiServices|null $services
 	 * @return OATHAuthServices
 	 */
-	public static function getInstance( MediaWikiServices $services = null ): OATHAuthServices {
+	public static function getInstance( ?MediaWikiServices $services = null ): OATHAuthServices {
 		return new self(
 			$services ?? MediaWikiServices::getInstance(),
 		);
-	}
-
-	/**
-	 * @return OATHAuthDatabase
-	 */
-	public function getDatabase(): OATHAuthDatabase {
-		return $this->services->getService( 'OATHAuthDatabase' );
 	}
 
 	/**
@@ -60,5 +53,12 @@ class OATHAuthServices {
 	 */
 	public function getModuleRegistry(): OATHAuthModuleRegistry {
 		return $this->services->getService( 'OATHAuthModuleRegistry' );
+	}
+
+	/**
+	 * @return OATHUserRepository
+	 */
+	public function getUserRepository(): OATHUserRepository {
+		return $this->services->getService( 'OATHUserRepository' );
 	}
 }

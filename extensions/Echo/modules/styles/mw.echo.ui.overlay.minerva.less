@@ -1,6 +1,6 @@
 @import 'mediawiki.skin.variables.less';
 
-@media all and ( max-width: @width-breakpoint-tablet ) {
+@media all and ( max-width: @max-width-breakpoint-mobile ) {
 	// On mobile screens position the anchor arrow correctly so it points to the
 	// notifications badge.
 	.mw-echo-ui-overlay .oo-ui-popupWidget-anchor {
@@ -19,7 +19,7 @@
 
 	.mw-echo-ui-actionMenuPopupWidget-menu {
 		padding: 0.5em;
-		font-size: 16 / 14em;
+		font-size: (16 / 14em);
 		box-shadow: none;
 		border: @border-width-base @border-style-base @border-color-subtle;
 		border-width: @border-width-base 0 0 0;

@@ -2,7 +2,8 @@
 	"@metadata": {
 		"authors": [
 			"Matma Rex",
-			"PiefPafPier"
+			"PiefPafPier",
+			"Woytecr"
 		]
 	},
 	"discussiontools": "Diskusje-ark",
@@ -85,8 +86,8 @@
 	"discussiontools-preference-topicsubscription-help": "Dit makket abonnearjen mooglik, om meldingen te krijen oer reäksjes by losse ûnderwerpen.",
 	"discussiontools-preference-visualenhancements": "Oerlisaktivens werjaan",
 	"discussiontools-preference-visualenhancements-help": "Dit skeakelet in nije sideyndieling yn, dy't ynformaasje befettet oer de aktivens binnen de oerlisûnderwerpen.",
-	"discussiontools-replybutton": "Beäntwurdzje",
-	"discussiontools-replylink": "beäntwurdzje",
+	"discussiontools-replybutton": "{{GENDER:|Beäntwurdzje}}",
+	"discussiontools-replylink": "{{GENDER:|beäntwurdzje}}",
 	"discussiontools-replywidget-abandon": "Wolle jo wier de reäksje dy't jo skriuwe fuortsmite?",
 	"discussiontools-replywidget-abandon-discard": "Reäksje fuortsmite",
 	"discussiontools-replywidget-abandon-keep": "Fierder skriuwe",
@@ -150,7 +151,6 @@
 	"echo-category-title-dt-subscription-archiving": "{{PLURAL:$1|Argivearring}} fan oerlis",
 	"echo-pref-tooltip-dt-subscription": "Meld my wannear't immen in nije reäksje pleatst by in ûnderwerp dêr't ik op abonnearre bin.",
 	"echo-pref-tooltip-dt-subscription-archiving": "Meld my wannear't in ûnderwerp dêr't ik op abonnearre bin argivearre as fan 'e side fuorthelle is, of at der meldingen oer nij pleatste reäksjes by dat ûnderwerp om oare redens net ferstjoerd wurde kinne.",
-	"minerva-talk-full-page": "Lêze as wikiside",
 	"tag-discussiontools-added-comment-description": "Mei dizze bewurking is in reäksje oan in oerlisside taheakke",
 	"tag-discussiontools-description": "Bewurking dien mei it Diskusje-ark",
 	"tag-discussiontools-edit": "Reäksje bewurke",

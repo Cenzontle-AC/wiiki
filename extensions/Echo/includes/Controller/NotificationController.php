@@ -2,10 +2,10 @@
 
 namespace MediaWiki\Extension\Notifications\Controller;
 
-use DeferredUpdates;
 use InvalidArgumentException;
 use Iterator;
 use MapCacheLRU;
+use MediaWiki\Deferred\DeferredUpdates;
 use MediaWiki\Extension\Notifications\AttributeManager;
 use MediaWiki\Extension\Notifications\CachedList;
 use MediaWiki\Extension\Notifications\ContainmentList;
@@ -20,10 +20,10 @@ use MediaWiki\Extension\Notifications\OnWikiList;
 use MediaWiki\Extension\Notifications\Services;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Revision\RevisionStore;
 use MediaWiki\Title\Title;
+use MediaWiki\User\User;
 use MediaWiki\User\UserIdentity;
-use User;
+use Wikimedia\Rdbms\IDBAccessObject;
 
 /**
  * This class represents the controller for notifications
@@ -187,7 +187,7 @@ class NotificationController {
 		}
 
 		$revisionStore = MediaWikiServices::getInstance()->getRevisionStore();
-		$rev = $revisionStore->getRevisionById( $revId, RevisionStore::READ_LATEST );
+		$rev = $revisionStore->getRevisionById( $revId, IDBAccessObject::READ_LATEST );
 		if ( !$rev ) {
 			$logger = LoggerFactory::getInstance( 'Echo' );
 			$logger->debug(
@@ -215,13 +215,15 @@ class NotificationController {
 			return;
 		}
 
+		$jobQueueGroup = MediaWikiServices::getInstance()->getJobQueueGroup();
 		$job = new NotificationDeleteJob(
 			$event->getTitle() ?: Title::newMainPage(),
 			[
 				'userIds' => $userIds
-			]
+			],
+			$jobQueueGroup
 		);
-		MediaWikiServices::getInstance()->getJobQueueGroup()->push( $job );
+		$jobQueueGroup->push( $job );
 	}
 
 	/**
@@ -479,7 +481,7 @@ class NotificationController {
 	 * Retrieves an array of User objects to be notified for an Event.
 	 *
 	 * @param Event $event
-	 * @return Iterator values are User objects
+	 * @return Iterator<User>
 	 */
 	public static function getUsersToNotifyForEvent( Event $event ) {
 		$notify = new FilteredSequentialIterator;
@@ -517,7 +519,7 @@ class NotificationController {
 		$notify->addFilter( static function ( $user ) use ( &$seen, $fname ) {
 			if ( !$user instanceof User ) {
 				wfDebugLog( $fname, 'Expected all User instances, received: ' .
-					( is_object( $user ) ? get_class( $user ) : gettype( $user ) )
+					get_debug_type( $user )
 				);
 
 				return false;

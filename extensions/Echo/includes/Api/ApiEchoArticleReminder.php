@@ -2,11 +2,11 @@
 
 namespace MediaWiki\Extension\Notifications\Api;
 
-use ApiBase;
 use DateInterval;
 use DateTime;
+use MediaWiki\Api\ApiBase;
 use MediaWiki\Extension\Notifications\Model\Event;
-use MWTimestamp;
+use MediaWiki\Utils\MWTimestamp;
 use Wikimedia\ParamValidator\ParamValidator;
 
 class ApiEchoArticleReminder extends ApiBase {

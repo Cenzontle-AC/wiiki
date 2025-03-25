@@ -1,7 +1,7 @@
 /*!
  * VisualEditor ToolContextItem class.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 /**
@@ -47,7 +47,7 @@ ve.ui.ToolContextItem.prototype.getCommand = function () {
  * @return {string} Description of model
  */
 ve.ui.ToolContextItem.prototype.getDescription = function () {
-	var description = '';
+	let description = '';
 
 	if ( this.model instanceof ve.dm.Annotation ) {
 		description = ve.ce.annotationFactory.getDescription( this.model );

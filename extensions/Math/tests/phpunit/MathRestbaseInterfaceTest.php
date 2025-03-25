@@ -4,6 +4,7 @@ use MediaWiki\Extension\Math\InvalidTeXException;
 use MediaWiki\Extension\Math\MathRestbaseException;
 use MediaWiki\Extension\Math\MathRestbaseInterface;
 use MediaWiki\Extension\Math\Tests\MathMockHttpTrait;
+use Wikimedia\Http\MultiHttpClient;
 
 /**
  * Test the interface to access Restbase paths
@@ -28,7 +29,6 @@ class MathRestbaseInterfaceTest extends MediaWikiIntegrationTestCase {
 		$this->assertEquals( '\\sin x^{2}', $rbi->getCheckedTex() );
 		$this->assertStringContainsString( '<mi>sin</mi>', $rbi->getMathML() );
 		$this->assertStringContainsString( '/svg/RESOURCE_LOCATION', $rbi->getFullSvgUrl() );
-		$this->assertStringContainsString( '/png/RESOURCE_LOCATION', $rbi->getFullPngUrl() );
 	}
 
 	public function testBatchEvaluate() {

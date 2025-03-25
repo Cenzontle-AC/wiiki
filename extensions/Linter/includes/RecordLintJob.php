@@ -21,16 +21,33 @@
 namespace MediaWiki\Linter;
 
 use Job;
-use MediaWiki\Title\Title;
+use MediaWiki\Logger\LoggerFactory;
+use MediaWiki\Page\PageReference;
 
 class RecordLintJob extends Job {
+	private TotalsLookup $totalsLookup;
+	private Database $database;
+	private CategoryManager $categoryManager;
+
 	/**
 	 * RecordLintJob constructor.
-	 * @param Title $title
+	 * @param PageReference $page
 	 * @param array $params
+	 * @param TotalsLookup $totalsLookup
+	 * @param Database $database
+	 * @param CategoryManager $categoryManager
 	 */
-	public function __construct( Title $title, array $params ) {
-		parent::__construct( 'RecordLintJob', $title, $params );
+	public function __construct(
+		PageReference $page,
+		array $params,
+		TotalsLookup $totalsLookup,
+		Database $database,
+		CategoryManager $categoryManager
+	) {
+		parent::__construct( 'RecordLintJob', $page, $params );
+		$this->totalsLookup = $totalsLookup;
+		$this->database = $database;
+		$this->categoryManager = $categoryManager;
 	}
 
 	public function run() {
@@ -42,8 +59,8 @@ class RecordLintJob extends Job {
 		// [ 'id' => LintError ]
 		$errors = [];
 		foreach ( $this->params['errors'] as $errorInfo ) {
-			if ( $errorInfo['type'] === 'inline-media-caption' ) {
-				// Drop lints of this type for now
+			if ( !$this->categoryManager->isEnabled( $errorInfo['type'] ) ) {
+				// Drop lints of these types for now
 				continue;
 			}
 			$error = new LintError(
@@ -56,8 +73,23 @@ class RecordLintJob extends Job {
 			// (e.g. same category of error in same template)
 			$errors[$error->id()] = $error;
 		}
-		$lintDb = new Database( $this->title->getArticleID(), $this->title->getNamespace() );
-		$lintDb->updateStats( $lintDb->setForPage( $errors ) );
+
+		LoggerFactory::getInstance( 'Linter' )->debug(
+			'{method}: Recording {numErrors} errors for {page}',
+			[
+				'method' => __METHOD__,
+				'numErrors' => count( $errors ),
+				'page' => $this->title->getPrefixedDBkey()
+			]
+		);
+
+		$this->totalsLookup->updateStats(
+			$this->database->setForPage(
+				$this->title->getArticleID(),
+				$this->title->getNamespace(),
+				$errors
+			)
+		);
 
 		return true;
 	}

@@ -2,7 +2,7 @@
 
 namespace MediaWiki\Extension\TemplateData;
 
-use Status;
+use MediaWiki\Status\Status;
 use stdClass;
 
 /**
@@ -341,7 +341,7 @@ class TemplateDataValidator {
 					'array' );
 			}
 
-			if ( !count( $setObj->params ) ) {
+			if ( !$setObj->params ) {
 				return Status::newFatal( 'templatedata-invalid-empty-array',
 					"sets.{$setNr}.params" );
 			}

@@ -2,11 +2,11 @@
 
 namespace MediaWiki\Extension\Notifications\Formatters;
 
-use Language;
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Language\Language;
 use MediaWiki\Logger\LoggerFactory;
-use Message;
-use User;
+use MediaWiki\Message\Message;
+use MediaWiki\User\User;
 
 /**
  * Abstract class that each "formatter" should implement.

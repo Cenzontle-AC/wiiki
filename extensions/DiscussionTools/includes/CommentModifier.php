@@ -24,8 +24,6 @@ class CommentModifier {
 
 	/**
 	 * Add an attribute to a list item to remove pre-whitespace in Parsoid
-	 *
-	 * @param Element $listItem
 	 */
 	private static function whitespaceParsoidHack( Element $listItem ): void {
 		// HACK: Setting data-parsoid removes the whitespace after the list item,
@@ -36,9 +34,6 @@ class CommentModifier {
 
 	/**
 	 * Remove extra linebreaks from a wikitext string
-	 *
-	 * @param string $wikitext
-	 * @return string
 	 */
 	public static function sanitizeWikitextLinebreaks( string $wikitext ): string {
 		$wikitext = CommentUtils::htmlTrim( $wikitext );
@@ -351,7 +346,13 @@ class CommentModifier {
 		while (
 			static::allOfType( $fragment->childNodes, 'dl' ) ||
 			static::allOfType( $fragment->childNodes, 'ul' ) ||
-			static::allOfType( $fragment->childNodes, 'ol' )
+			static::allOfType( $fragment->childNodes, 'ol' ) ||
+			(
+				// Or if the comment starts with a bullet followed by indents
+				count( $fragment->childNodes ) > 1 &&
+				static::allOfType( [ $fragment->childNodes[0] ], 'ul' ) &&
+				static::allOfType( array_slice( iterator_to_array( $fragment->childNodes ), 1 ), 'dl' )
+			)
 		) {
 			// Do not iterate over childNodes while we're modifying it
 			$childNodeList = iterator_to_array( $fragment->childNodes );
@@ -373,10 +374,6 @@ class CommentModifier {
 	 * @param DocumentFragment|null $fragment Containing document fragment if list has no parent
 	 */
 	public static function unwrapList( Node $list, ?DocumentFragment $fragment = null ): void {
-		$doc = $list->ownerDocument;
-		$container = $fragment ?: $list->parentNode;
-		$referenceNode = $list;
-
 		if ( !(
 			$list instanceof Element && (
 				strtolower( $list->tagName ) === 'dl' ||
@@ -393,6 +390,9 @@ class CommentModifier {
 			return;
 		}
 
+		$doc = $list->ownerDocument;
+		$container = $fragment ?: $list->parentNode;
+		$referenceNode = $list;
 		while ( $list->firstChild ) {
 			if ( $list->firstChild instanceof Element ) {
 				// Move <dd> contents to <p>
@@ -432,9 +432,6 @@ class CommentModifier {
 
 	/**
 	 * Add another list item after the given one.
-	 *
-	 * @param Element $previousItem
-	 * @return Element
 	 */
 	public static function addSiblingListItem( Element $previousItem ): Element {
 		$listItem = $previousItem->ownerDocument->createElement( $previousItem->tagName );
@@ -444,10 +441,6 @@ class CommentModifier {
 
 	/**
 	 * Create an element that will convert to the provided wikitext
-	 *
-	 * @param Document $doc
-	 * @param string $wikitext
-	 * @return Element
 	 */
 	public static function createWikitextNode( Document $doc, string $wikitext ): Element {
 		$span = $doc->createElement( 'span' );
@@ -460,9 +453,6 @@ class CommentModifier {
 
 	/**
 	 * Check if an element created by ::createWikitextNode() starts with list item markup.
-	 *
-	 * @param Element $node
-	 * @return bool
 	 */
 	private static function isWikitextNodeListItem( Element $node ): bool {
 		$dataMw = json_decode( $node->getAttribute( 'data-mw' ) ?? '', true );
@@ -473,9 +463,6 @@ class CommentModifier {
 
 	/**
 	 * Append a user signature to the comment in the container.
-	 *
-	 * @param DocumentFragment $container
-	 * @param string $signature
 	 */
 	public static function appendSignature( DocumentFragment $container, string $signature ): void {
 		$doc = $container->ownerDocument;
@@ -513,10 +500,6 @@ class CommentModifier {
 
 	/**
 	 * Append a user signature to the comment in the provided wikitext.
-	 *
-	 * @param string $wikitext
-	 * @param string $signature
-	 * @return string
 	 */
 	public static function appendSignatureWikitext( string $wikitext, string $signature ): string {
 		$wikitext = CommentUtils::htmlTrim( $wikitext );
@@ -669,7 +652,7 @@ class CommentModifier {
 	 * @param string|null $signature
 	 */
 	public static function addWikitextReply(
-		ContentCommentItem $comment, string $wikitext, string $signature = null
+		ContentCommentItem $comment, string $wikitext, ?string $signature = null
 	): void {
 		$doc = $comment->getRange()->endContainer->ownerDocument;
 		$container = static::prepareWikitextReply( $doc, $wikitext );
@@ -687,7 +670,7 @@ class CommentModifier {
 	 * @param string|null $signature
 	 */
 	public static function addHtmlReply(
-		ContentCommentItem $comment, string $html, string $signature = null
+		ContentCommentItem $comment, string $html, ?string $signature = null
 	): void {
 		$doc = $comment->getRange()->endContainer->ownerDocument;
 		$container = static::prepareHtmlReply( $doc, $html );

@@ -14,7 +14,7 @@
 	"license-name": "GPL-2.0-or-later",
 	"type": "parserhook",
 	"requires": {
-		"MediaWiki": ">= 1.41",
+		"MediaWiki": ">= 1.43",
 		"platform": {
 			"ability-shell": true
 		}
@@ -34,24 +34,8 @@
 	"ResourceModules": {
 		"ext.pygments": {
 			"class": "MediaWiki\\SyntaxHighlight\\ResourceLoaderPygmentsModule",
-			"targets": [
-				"desktop",
-				"mobile"
-			],
 			"styles": [
 				"pygments.wrapper.less"
-			]
-		},
-		"ext.pygments.linenumbers": {
-			"targets": [
-				"desktop",
-				"mobile"
-			],
-			"scripts": [
-				"pygments.linenumbers.js"
-			],
-			"dependencies": [
-				"mediawiki.util"
 			]
 		},
 		"ext.geshi.visualEditor": {
@@ -88,10 +72,6 @@
 				"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-showlines",
 				"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-startingline",
 				"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-title"
-			],
-			"targets": [
-				"desktop",
-				"mobile"
 			]
 		}
 	},
@@ -99,7 +79,8 @@
 		"ParserFirstCallInit": "main",
 		"ContentGetParserOutput": "main",
 		"ApiFormatHighlight": "main",
-		"SoftwareInfo": "main"
+		"SoftwareInfo": "main",
+		"ResourceLoaderRegisterModules": "main"
 	},
 	"HookHandlers": {
 		"main": {

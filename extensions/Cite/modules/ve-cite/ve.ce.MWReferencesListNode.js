@@ -10,11 +10,9 @@
 /**
  * ContentEditable MediaWiki references list node.
  *
- * @class
- * @extends ve.ce.LeafNode
- * @mixin ve.ce.FocusableNode
- *
  * @constructor
+ * @extends ve.ce.LeafNode
+ * @mixes ve.ce.FocusableNode
  * @param {ve.dm.MWReferencesListNode} model Model to observe
  * @param {Object} [config] Configuration options
  */
@@ -26,8 +24,6 @@ ve.ce.MWReferencesListNode = function VeCeMWReferencesListNode() {
 	ve.ce.FocusableNode.call( this );
 
 	// Properties
-	this.internalList = null;
-	this.listNode = null;
 	this.modified = false;
 
 	// DOM changes
@@ -68,35 +64,34 @@ ve.ce.MWReferencesListNode.static.primaryCommandName = 'referencesList';
 /* Static Methods */
 
 /**
- * @inheritdoc
+ * @override
+ * @see ve.ce.LeafNode
  */
 ve.ce.MWReferencesListNode.static.getDescription = function ( model ) {
 	return model.getAttribute( 'refGroup' );
 };
 
 /**
- * @inheritdoc ve.ce.FocusableNode
+ * @override
+ * @see ve.ce.FocusableNode
  */
 ve.ce.MWReferencesListNode.prototype.getExtraHighlightClasses = function () {
-	const extraClasses = ve.ce.FocusableNode.prototype.getExtraHighlightClasses.apply( this, arguments );
-	return extraClasses.concat( [
-		've-ce-mwReferencesListNode-highlight'
-	] );
+	return ve.ce.FocusableNode.prototype
+		.getExtraHighlightClasses.apply( this, arguments )
+		.concat( [ 've-ce-mwReferencesListNode-highlight' ] );
 };
 
 /* Methods */
 
 /**
  * Handle setup events.
- *
- * @method
  */
 ve.ce.MWReferencesListNode.prototype.onSetup = function () {
-	this.internalList = this.getModel().getDocument().getInternalList();
-	this.listNode = this.internalList.getListNode();
+	const internalList = this.getModel().getDocument().getInternalList();
+	const listNode = internalList.getListNode();
 
-	this.internalList.connect( this, { update: 'onInternalListUpdate' } );
-	this.listNode.connect( this, { update: 'onListNodeUpdate' } );
+	internalList.connect( this, { update: 'onInternalListUpdate' } );
+	listNode.connect( this, { update: 'onListNodeUpdate' } );
 
 	// Parent method
 	ve.ce.MWReferencesListNode.super.prototype.onSetup.call( this );
@@ -104,22 +99,19 @@ ve.ce.MWReferencesListNode.prototype.onSetup = function () {
 
 /**
  * Handle teardown events.
- *
- * @method
  */
 ve.ce.MWReferencesListNode.prototype.onTeardown = function () {
 	// Parent method
 	ve.ce.MWReferencesListNode.super.prototype.onTeardown.call( this );
 
-	if ( !this.listNode ) {
+	if ( !this.getModel() || !this.getModel().getDocument() ) {
 		return;
 	}
+	const internalList = this.getModel().getDocument().getInternalList();
+	const listNode = internalList.getListNode();
 
-	this.internalList.disconnect( this, { update: 'onInternalListUpdate' } );
-	this.listNode.disconnect( this, { update: 'onListNodeUpdate' } );
-
-	this.internalList = null;
-	this.listNode = null;
+	internalList.disconnect( this, { update: 'onInternalListUpdate' } );
+	listNode.disconnect( this, { update: 'onListNodeUpdate' } );
 };
 
 /**
@@ -127,10 +119,12 @@ ve.ce.MWReferencesListNode.prototype.onTeardown = function () {
  *
  * This will occur after a document transaction.
  *
- * @method
  * @param {string[]} groupsChanged A list of groups which have changed in this transaction
  */
 ve.ce.MWReferencesListNode.prototype.onInternalListUpdate = function ( groupsChanged ) {
+	if ( !this.getModel() ) {
+		return;
+	}
 	// Only update if this group has been changed
 	if ( groupsChanged.indexOf( this.getModel().getAttribute( 'listGroup' ) ) !== -1 ) {
 		this.modified = true;
@@ -161,8 +155,6 @@ ve.ce.MWReferencesListNode.prototype.onAttributeChange = function ( key ) {
  * Handle the updating of the InternalListNode.
  *
  * This will occur after changes to any InternalItemNode.
- *
- * @method
  */
 ve.ce.MWReferencesListNode.prototype.onListNodeUpdate = function () {
 	// When the list node updates we're not sure which list group the item
@@ -182,11 +174,11 @@ ve.ce.MWReferencesListNode.prototype.update = function () {
 		return;
 	}
 
-	const internalList = model.getDocument().internalList;
 	const refGroup = model.getAttribute( 'refGroup' );
-	const listGroup = model.getAttribute( 'listGroup' );
-	const nodes = internalList.getNodeGroup( listGroup );
-	const hasModelReferences = !!( nodes && nodes.indexOrder.length );
+
+	const docRefs = ve.dm.MWDocumentReferences.static.refsForDoc( model.getDocument() );
+	const groupRefs = docRefs.getGroupRefs( refGroup );
+	const hasModelReferences = !groupRefs.isEmpty();
 
 	let emptyText;
 	if ( refGroup !== '' ) {
@@ -195,6 +187,12 @@ ve.ce.MWReferencesListNode.prototype.update = function () {
 		emptyText = ve.msg( 'cite-ve-referenceslist-isempty-default' );
 	}
 
+	let originalDomElements;
+	if ( model.getElement().originalDomElementsHash ) {
+		originalDomElements = model.getStore().value(
+			model.getElement().originalDomElementsHash
+		);
+	}
 	// Use the Parsoid-provided DOM if:
 	//
 	// * There are no references in the model
@@ -204,13 +202,11 @@ ve.ce.MWReferencesListNode.prototype.update = function () {
 	if (
 		!hasModelReferences &&
 		!this.modified &&
-		model.getElement().originalDomElementsHash
+		originalDomElements
 	) {
 		// Create a copy when importing to the main document, as extensions may
+		this.$originalRefList = $( ve.copyDomElements( originalDomElements, document ) );
 		// modify DOM nodes in the main doc.
-		this.$originalRefList = $( ve.copyDomElements( model.getStore().value(
-			model.getElement().originalDomElementsHash
-		), document ) );
 		if ( this.$originalRefList.find( 'li' ).length ) {
 			this.$element.append( this.$originalRefList );
 		} else {
@@ -224,6 +220,17 @@ ve.ce.MWReferencesListNode.prototype.update = function () {
 		this.$originalRefList.remove();
 		this.$originalRefList = null;
 	}
+	// Copy CSS to dynamic ref list
+	if ( originalDomElements ) {
+		// Get first container, e.g. skipping TemplateStyles
+		const divs = originalDomElements.filter( ( element ) => element.tagName === 'DIV' );
+		if ( divs.length ) {
+			// eslint-disable-next-line mediawiki/class-doc
+			this.$element.addClass( divs[ 0 ].getAttribute( 'class' ) );
+			this.$element.attr( 'style', divs[ 0 ].getAttribute( 'style' ) );
+		}
+	}
+
 	this.$reflist.detach().empty().attr( 'data-mw-group', refGroup || null );
 	this.$refmsg.detach();
 
@@ -231,78 +238,98 @@ ve.ce.MWReferencesListNode.prototype.update = function () {
 		this.$refmsg.text( emptyText );
 		this.$element.append( this.$refmsg );
 	} else {
-		nodes.indexOrder.forEach( function ( index ) {
-			const firstNode = nodes.firstNodes[ index ];
-
-			const key = internalList.keys[ index ];
-			let keyedNodes = nodes.keyedNodes[ key ];
-			keyedNodes = keyedNodes.filter( function ( node ) {
-				// Exclude placeholders and references defined inside the references list node
-				return !node.getAttribute( 'placeholder' ) &&
-					!node.findParent( ve.dm.MWReferencesListNode );
-			} );
-
-			if ( !keyedNodes.length ) {
-				return;
-			}
-
-			const $li = $( '<li>' )
-				.append( this.renderBacklinks( keyedNodes, refGroup ), ' ' );
-
-			// Generate reference HTML from first item in key
-			const modelNode = internalList.getItemNode( firstNode.getAttribute( 'listIndex' ) );
-			if ( modelNode && modelNode.length ) {
-				const refPreview = new ve.ui.MWPreviewElement( modelNode, { useView: true } );
-				$li.append(
-					$( '<span>' )
-						.addClass( 'reference-text' )
-						.append( refPreview.$element )
-				);
-			} else {
-				$li.append(
-					$( '<span>' )
-						.addClass( 've-ce-mwReferencesListNode-muted' )
-						.text( ve.msg( 'cite-ve-referenceslist-missingref-in-list' ) )
-				).addClass( 've-ce-mwReferencesListNode-missingRef' );
-			}
-
-			if ( this.getRoot() ) {
-				const surface = this.getRoot().getSurface().getSurface();
-				$li.on( 'mousedown', function ( e ) {
-					if ( modelNode && modelNode.length ) {
-						const items = ve.ui.contextItemFactory.getRelatedItems( [ firstNode ] ).filter( function ( item ) {
-							return item.name !== 'mobileActions';
-						} );
-						if ( items.length ) {
-							const contextItem = ve.ui.contextItemFactory.lookup( items[ 0 ].name );
-							if ( contextItem ) {
-								const command = surface.commandRegistry.lookup( contextItem.static.commandName );
-								if ( command ) {
-									const fragmentArgs = {
-										fragment: surface.getModel().getLinearFragment( firstNode.getOuterRange(), true ),
-										selectFragmentOnClose: false
-									};
-									const newArgs = ve.copy( command.args );
-									if ( command.name === 'reference' ) {
-										newArgs[ 1 ] = fragmentArgs;
-									} else {
-										ve.extendObject( newArgs[ 0 ], fragmentArgs );
-									}
-									command.execute( surface, newArgs );
-								}
-							}
-						}
-					}
-					e.preventDefault();
-				} );
-			}
-
-			this.$reflist.append( $li );
-		}.bind( this ) );
+		// Render all at once.
+		this.$reflist.append(
+			groupRefs.getTopLevelKeysInReflistOrder()
+				.map( ( listKey ) => this.renderListItem(
+					groupRefs, refGroup, listKey
+				) )
+		);
 
 		this.updateClasses();
 		this.$element.append( this.$reflist );
 	}
+};
+
+/**
+ * Render a reference list item
+ *
+ * @private
+ * @param {ve.dm.MWGroupReferences} groupRefs object holding calculated information about all group refs
+ * @param {string} refGroup Reference group
+ * @param {string} key top-level reference key, doesn't necessarily exist
+ * @return {jQuery} Rendered list item
+ */
+ve.ce.MWReferencesListNode.prototype.renderListItem = function ( groupRefs, refGroup, key ) {
+	const ref = groupRefs.getInternalModelNode( key );
+	const backlinkNodes = groupRefs.getRefUsages( key );
+	const subrefs = groupRefs.getSubrefs( key );
+
+	const $li = $( '<li>' )
+		.css( '--footnote-number', `"${ groupRefs.getIndexLabel( key ) }."` )
+		.append( this.renderBacklinks( backlinkNodes, refGroup ), ' ' );
+
+	if ( ref && ref.length ) {
+		const refPreview = new ve.ui.MWPreviewElement( ref, { useView: true } );
+		$li.append(
+			$( '<span>' )
+				.addClass( 'reference-text' )
+				.append( refPreview.$element )
+		);
+
+		if ( this.getRoot() ) {
+			const surface = this.getRoot().getSurface().getSurface();
+			// TODO: attach to the singleton click handler on the surface
+			$li.on( 'mousedown', ( e ) => {
+				if ( ve.isUnmodifiedLeftClick( e ) ) {
+					const node = groupRefs.getRefNode( key );
+					const items = ve.ui.contextItemFactory.getRelatedItems( [ node ] )
+						.filter( ( item ) => item.name !== 'mobileActions' );
+					if ( items.length ) {
+						const contextItem = ve.ui.contextItemFactory.lookup( items[ 0 ].name );
+						if ( contextItem ) {
+							const command = surface.commandRegistry
+								.lookup( contextItem.static.commandName );
+							if ( command ) {
+								const fragmentArgs = {
+									fragment: surface.getModel()
+										.getLinearFragment( node.getOuterRange(), true ),
+									selectFragmentOnClose: false
+								};
+								const newArgs = ve.copy( command.args );
+								if ( command.name === 'reference' ) {
+									newArgs[ 1 ] = fragmentArgs;
+								} else {
+									ve.extendObject( newArgs[ 0 ], fragmentArgs );
+								}
+								command.execute( surface, newArgs );
+							}
+						}
+					}
+				}
+				e.preventDefault();
+			} );
+		}
+	} else {
+		$li.append(
+			$( '<span>' )
+				.addClass( 've-ce-mwReferencesListNode-muted' )
+				.text( subrefs.length ? ve.msg( 'cite-ve-referenceslist-missing-parent' ) :
+					ve.msg( 'cite-ve-referenceslist-missingref-in-list' ) )
+		).addClass( 've-ce-mwReferencesListNode-missingRef' );
+	}
+
+	if ( subrefs.length ) {
+		$li.append(
+			$( '<ol>' ).append(
+				subrefs.map( ( subNode ) => this.renderListItem(
+					groupRefs, refGroup, subNode.getAttribute( 'listKey' )
+				) )
+			)
+		);
+	}
+
+	return $li;
 };
 
 /**
@@ -338,6 +365,7 @@ ve.ce.MWReferencesListNode.prototype.renderBacklinks = function ( keyedNodes, re
 	for ( let i = 0; i < keyedNodes.length; i++ ) {
 		$( '<a>' )
 			.attr( 'data-mw-group', refGroup || null )
+			// FIXME: i18n backlink numbering
 			.append( $( '<span>' ).addClass( 'mw-linkback-text' ).text( ( i + 1 ) + ' ' ) )
 			.appendTo( $refSpan );
 	}

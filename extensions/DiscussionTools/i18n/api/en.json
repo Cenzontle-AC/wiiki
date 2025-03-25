@@ -5,6 +5,7 @@
 	"apierror-discussiontools-commentid-notfound": "Comment with the ID '$1' not found.",
 	"apierror-discussiontools-commentname-ambiguous": "Multiple comments with the name '$1' found, <var>commentid</var> is required.",
 	"apierror-discussiontools-commentname-notfound": "Comment with the name '$1' not found.",
+	"apierror-discussiontools-findcomment-pagenevertalk": "Page has never contained any discussions.",
 	"apierror-discussiontools-formtoken-used": "Comment already posted. Reload the page to see it.",
 	"apierror-discussiontools-subscription-failed-add": "Could not subscribe to this topic.",
 	"apierror-discussiontools-subscription-failed-remove": "Could not unsubscribe from this topic.",
@@ -22,6 +23,8 @@
 	"apihelp-discussiontoolsedit-summary": "Post a message on a discussion page.",
 	"apihelp-discussiontoolsfindcomment-summary": "Find a comment by its ID or name.",
 	"apihelp-discussiontoolsfindcomment-param-idorname": "Comment ID or name",
+	"apihelp-discussiontoolsfindcomment-param-heading": "Heading hash fragment",
+	"apihelp-discussiontoolsfindcomment-param-page": "Page that the heading hash fragment once existed on",
 	"apihelp-discussiontoolsgetsubscriptions-param-commentname": "Names of the topics to check",
 	"apihelp-discussiontoolsgetsubscriptions-summary": "Get the subscription statuses of given topics.",
 	"apihelp-discussiontoolspageinfo-param-oldid": "The revision number to use (defaults to latest revision).",
@@ -36,5 +39,7 @@
 	"apihelp-discussiontoolssubscribe-param-commentname": "Name of the topic to subscribe to (or unsubscribe from)",
 	"apihelp-discussiontoolssubscribe-param-page": "A page on which the topic appears",
 	"apihelp-discussiontoolssubscribe-param-subscribe": "True to subscribe, false to unsubscribe",
-	"apihelp-discussiontoolssubscribe-summary": "Subscribe (or unsubscribe) to receive notifications about a topic."
+	"apihelp-discussiontoolssubscribe-summary": "Subscribe (or unsubscribe) to receive notifications about a topic.",
+	"apihelp-discussiontoolsthank-param-commentid": "ID of the comment to thank.",
+	"apihelp-discussiontoolsthank-summary": "Send a public thank-you notification for a comment."
 }

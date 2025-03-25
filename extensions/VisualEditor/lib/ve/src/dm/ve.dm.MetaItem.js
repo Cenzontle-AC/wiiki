@@ -1,7 +1,7 @@
 /*!
  * VisualEditor DataModel MetaItem class.
  *
- * @copyright 2011-2020 VisualEditor Team and others; see http://ve.mit-license.org
+ * @copyright See AUTHORS.txt
  */
 
 /**
@@ -11,7 +11,7 @@
  * @class
  * @abstract
  * @extends ve.dm.LeafNode
- * @mixins OO.EventEmitter
+ * @mixes OO.EventEmitter
  *
  * @constructor
  * @param {Object} element Reference to element in meta-linmod
