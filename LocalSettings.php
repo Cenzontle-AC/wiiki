@@ -34,6 +34,10 @@ foreach (explode("\n", file_get_contents(__DIR__ . "/.env")) as $line) {
 $wgServer = getenv('wgServer'); // e.g "https://mywiki.com"
 
 ## Env settings
+$wgSecretKey = getenv('wgSecretKey'); 
+# Site upgrade key. Must be set to a string (default provided) to turn on the
+# web installer while LocalSettings.php is in place
+$wgUpgradeKey = getenv('wgUpgradeKey'); 
 ### Database
 $wgDBtype = getenv('wgDBtype');
 $wgDBserver = getenv('wgDBserver');
@@ -55,7 +59,9 @@ $emergencyContactEmail = getenv('emergencyContactEmail');
 $passwordSenderEmail = getenv('passwordSenderEmail');
 
 ### show error if required env vars ar missing
-if(!($wgServer && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword && $privateNamespaceName
+if(!($wgServer && $wgSecretKey && $wgUpgradeKey 
+     && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword 
+     && $privateNamespaceName
      && $smptHost && $smptIDHost && $smptPort && $smptShouldAuth_ && $smptUsername && $smptPassword)) {
     throw new Exception("Missing env var");
     exit;
@@ -148,14 +154,8 @@ $wgLocaltimezone = "America/Mazatlan";
 ## be publicly accessible from the web.
 #$wgCacheDirectory = "$IP/cache";
 
-$wgSecretKey = "19032627fdcebae7192b1dac8f80b37498a90351fc6a6848136a0cbf36cc9443";
-
 # Changing this will log out all existing sessions.
 $wgAuthenticationTokenVersion = "1";
-
-# Site upgrade key. Must be set to a string (default provided) to turn on the
-# web installer while LocalSettings.php is in place
-$wgUpgradeKey = "62f634a29e92b640";
 
 ## For attaching licensing metadata to pages, and displaying an
 ## appropriate copyright notice / icon. GNU Free Documentation
