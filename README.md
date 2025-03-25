@@ -2,6 +2,23 @@
 
 Repositorio con los archivos de configuración y las extensiones de la Wiiki, la wiki Wixárika.
 
+- [Wiiki](#wiiki)
+  - [Objetivo](#objetivo)
+  - [Instrucción de instalación en un nuevo servidor (o localmente)](#instrucción-de-instalación-en-un-nuevo-servidor-o-localmente)
+    - [Crear los archivos necesarios](#crear-los-archivos-necesarios)
+    - [Configurar el ambiente (.env)](#configurar-el-ambiente-env)
+    - [Configurar la base de datos](#configurar-la-base-de-datos)
+      - [Crear la base de datos y cargar los datos usando el usuario root, o algún otro con todos los privilegios suficientes](#crear-la-base-de-datos-y-cargar-los-datos-usando-el-usuario-root-o-algún-otro-con-todos-los-privilegios-suficientes)
+    - [Subir las imagenes](#subir-las-imagenes)
+      - [Crear el usuario de la base de datos](#crear-el-usuario-de-la-base-de-datos)
+  - [Administración](#administración)
+    - [Crear manualmente un backup de la base de datos](#crear-manualmente-un-backup-de-la-base-de-datos)
+    - [Crear manualmente un backup del directorio de imágenes](#crear-manualmente-un-backup-del-directorio-de-imágenes)
+      - [Descomprimir el backup](#descomprimir-el-backup)
+  - [Abrir la página](#abrir-la-página)
+    - [En producción](#en-producción)
+    - [En desarrollo](#en-desarrollo)
+
 ## Objetivo
 
 El objetivo de este repositorio es permitir hacer fácilmente cambios en la configuración de la wiki y así como facilitar, en caso de ser necesaria, la migración de la misma de un servidor a otro.
@@ -81,6 +98,19 @@ GRANT ALL PRIVILEGES ON wiiki_mediawiki.* TO  'miusuario'@'localhost' ;
 ```sh
 # en el directorio donde se desea crear el backup
 mysqldump -u <usuario-de-la-base-de-datos> -p --databases <la-base-de-datos> | xz > <la-base-de-datos>_$(date +"%Y-%m-%d_%H-%M-%S").sql.xz
+```
+
+### Crear manualmente un backup del directorio de imágenes
+
+```sh
+# en el directorio donde se desea crear el backup, asumiendo ~
+tar -cJf "images_$(date +%Y-%m-%d).tar.xz" -C /var/www/html images
+```
+
+#### Descomprimir el backup
+
+```sh
+tar ` -xJf images_<date>.tar.xz -C /path/to/destination
 ```
 
 ## Abrir la página
