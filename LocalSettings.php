@@ -46,7 +46,8 @@ $privateNamespaceName = getenv('privateNamespaceName');
 $smptHost = getenv('smptHost');
 $smptIDHost = getenv('smptIDHost');
 $smptPort = getenv('smptPort');
-$smptShouldAuth = getenv('smptShouldAuth') === true;
+$smptShouldAuth_ = getenv('smptShouldAuth');
+$smptShouldAuth = $smptShouldAuth_ === 'true'; # not included in env test below, but $smptShouldAuth_ is.
 $smptUsername = getenv('smptUsername');
 $smptPassword = getenv('smptPassword');
 ### Emails
@@ -55,7 +56,7 @@ $passwordSenderEmail = getenv('passwordSenderEmail');
 
 ### show error if required env vars ar missing
 if(!($wgServer && $wgDBserver && $wgDBname && $wgDBtype && $wgDBuser && $wgDBpassword && $privateNamespaceName
-     && $smptHost && $smptIDHost && $smptPort && $smptShouldAuth && $smptUsername && $smptPassword)) {
+     && $smptHost && $smptIDHost && $smptPort && $smptShouldAuth_ && $smptUsername && $smptPassword)) {
     throw new Exception("Missing env var");
     exit;
 }
